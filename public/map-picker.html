@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pick location</title>
+  <link rel="stylesheet" href="/leaflet.css" />
+  <script src="/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; display: flex; flex-direction: column; height: 100vh; }
+    #toolbar {
+      padding: 0.75rem 1rem; background: #1a1d27; border-bottom: 1px solid #2e3250;
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+    }
+    #hint { font-size: 0.85rem; color: #7a85a3; }
+    #coords { font-size: 0.85rem; color: #4f8ef7; font-family: monospace; }
+    #map { flex: 1; }
+    #confirmBtn {
+      padding: 0.5rem 1.2rem; background: #4f8ef7; color: #fff; border: none;
+      border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    }
+    #confirmBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #confirmBtn:not(:disabled):hover { background: #3a7de0; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <div>
+      <div id="hint">Click on the map to place the starting pin</div>
+      <div id="coords"></div>
+    </div>
+    <button id="confirmBtn" disabled>Confirm location</button>
+  </div>
+  <div id="map"></div>
+
+  <script>
+    // Fix default icon paths when serving locally
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconUrl: '/marker-icon.png',
+      iconRetinaUrl: '/marker-icon-2x.png',
+      shadowUrl: '/marker-shadow.png',
+    });
+
+    let marker = null;
+    let picked = null;
+
+    const map = L.map('map').setView([42.7, 25.4], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 18,
+    }).addTo(map);
+
+    map.on('click', function(e) {
+      const { lat, lng } = e.latlng;
+      picked = { lat, lng };
+      if (marker) {
+        marker.setLatLng([lat, lng]);
+      } else {
+        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        marker.on('dragend', function() {
+          const p = marker.getLatLng();
+          picked = { lat: p.lat, lng: p.lng };
+          showCoords();
+        });
+      }
+      showCoords();
+    });
+
+    function showCoords() {
+      document.getElementById('coords').textContent =
+        picked.lat.toFixed(5) + ', ' + picked.lng.toFixed(5);
+      document.getElementById('confirmBtn').disabled = false;
+      document.getElementById('hint').textContent = 'Drag the pin to adjust, then confirm';
+    }
+
+    document.getElementById('confirmBtn').addEventListener('click', function() {
+      if (!picked) return;
+      localStorage.setItem('mapPin', JSON.stringify({ lat: picked.lat, lng: picked.lng }));
+      localStorage.setItem('returnToOrder', '1');
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

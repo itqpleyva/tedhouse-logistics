@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEDHOUSE LOGISTICS</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --card:    #21253a;
+      --border:  #2e3250;
+      --accent:  #4f8ef7;
+      --green:   #3ecf6e;
+      --yellow:  #f5c842;
+      --red:     #f76f6f;
+      --purple:  #a78bfa;
+      --text:    #e2e8f0;
+      --muted:   #7a85a3;
+      --nav-w:   220px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    nav {
+      width: var(--nav-w); min-height: 100vh; background: var(--surface);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; z-index: 200;
+    }
+    .nav-brand {
+      padding: 1.4rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand h1 { font-size: 1rem; font-weight: 700; color: var(--accent); }
+    .nav-brand p  { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+    .nav-flag { font-size: 1.5rem; margin-bottom: 0.4rem; }
+
+    .nav-menu { padding: 1rem 0.75rem; flex: 1; }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.7rem 0.85rem; border-radius: 9px;
+      cursor: pointer; font-size: 0.88rem; font-weight: 500;
+      color: var(--muted); transition: background 0.15s, color 0.15s;
+      margin-bottom: 0.25rem;
+    }
+    .nav-item:hover { background: rgba(79,142,247,0.08); color: var(--text); }
+    .nav-item.active { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .nav-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--nav-w); flex: 1; display: flex; flex-direction: column; }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem; display: flex; align-items: center;
+      justify-content: space-between; gap: 1rem; position: sticky; top: 0; z-index: 100;
+    }
+    .header-title { font-size: 1.05rem; font-weight: 700; }
+    .header-sub   { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .btn {
+      padding: 0.55rem 1.1rem; border: none; border-radius: 8px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-ghost { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+    .btn-green { background: var(--green); color: #0f1117; }
+    .btn-green:hover { opacity: 0.85; }
+
+    content { padding: 2rem; }
+
+    /* ── VIEWS ── */
+    .view { display: none; padding: 2rem; }
+    .view.active { display: block; }
+
+    /* ── TOTALS ── */
+    .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px,1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .total-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.25rem; display: flex; align-items: center; gap: 1rem; }
+    .total-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+    .total-card:nth-child(1) .total-icon { background: rgba(62,207,110,0.15); }
+    .total-card:nth-child(2) .total-icon { background: rgba(79,142,247,0.15); }
+    .total-card:nth-child(3) .total-icon { background: rgba(245,200,66,0.15); }
+    .total-card:nth-child(4) .total-icon { background: rgba(247,111,111,0.15); }
+    .total-info p  { font-size: 0.73rem; color: var(--muted); margin-bottom: 0.2rem; }
+    .total-info h2 { font-size: 1.3rem; font-weight: 700; }
+
+    .section-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 1rem; }
+
+    /* ── SEARCH ── */
+    .search-wrap { position: relative; margin-bottom: 1.25rem; max-width: 360px; }
+    .search-wrap input {
+      width: 100%; padding: 0.65rem 2.3rem 0.65rem 2.5rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 0.92rem; outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-icon {
+      position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 0.95rem; pointer-events: none;
+    }
+    .autocomplete-list {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      z-index: 500; display: none;
+    }
+    .autocomplete-list.open { display: block; }
+    .ac-item {
+      padding: 0.65rem 1rem; font-size: 0.88rem; cursor: pointer;
+      display: flex; align-items: center; gap: 0.5rem;
+      border-bottom: 1px solid var(--border); transition: background 0.1s;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.focused { background: rgba(79,142,247,0.12); color: var(--accent); }
+    .ac-highlight { color: var(--accent); font-weight: 700; }
+    .search-clear {
+      position: absolute; right: 0.7rem; top: 50%; transform: translateY(-50%);
+      background: var(--border); border: none; border-radius: 50%;
+      width: 18px; height: 18px; cursor: pointer; color: var(--muted);
+      font-size: 0.7rem; display: none; align-items: center; justify-content: center;
+      line-height: 1; transition: background 0.15s, color 0.15s;
+    }
+    .search-clear.visible { display: flex; }
+    .search-clear:hover { background: var(--red); color: #fff; }
+    .house-card.hidden { display: none; }
+    .house-card.highlighted { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,142,247,0.25); }
+    .house-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,0.35); }
+    .house-card { cursor: pointer; }
+
+    /* ── HOUSE GRID ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.2rem; }
+    .house-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.35rem;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .house-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .house-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.1rem; }
+    .house-name { font-size: 0.97rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .house-loc  { font-size: 0.76rem; color: var(--muted); }
+    .house-id   { background: rgba(79,142,247,0.15); color: var(--accent); font-size: 0.7rem; font-weight: 700; padding: 0.22rem 0.5rem; border-radius: 6px; flex-shrink: 0; }
+    .material-row { margin-bottom: 0.8rem; }
+    .material-row:last-child { margin-bottom: 0; }
+    .mat-label { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 0.28rem; }
+    .mat-name  { color: var(--text); font-weight: 500; display: flex; align-items: center; gap: 0.35rem; }
+    .mat-value { color: var(--muted); }
+    .mat-value strong { color: var(--text); }
+    .bar-track { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+    .bar-wood   { background: var(--green); }
+    .bar-screws { background: var(--accent); }
+    .bar-boards { background: var(--yellow); }
+    .bar-tiles  { background: var(--red); }
+    .mat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── ORDER FORM ── */
+    .order-layout { display: grid; grid-template-columns: 380px 1fr; gap: 2rem; align-items: start; }
+    @media (max-width: 900px) { .order-layout { grid-template-columns: 1fr; } }
+
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; }
+    .form-card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .form-card p  { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+    .field { margin-bottom: 1.1rem; }
+    .field label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
+    .field input {
+      width: 100%; padding: 0.65rem 0.9rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field .unit { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ── RESULTS ── */
+    #results { margin-top: 0; }
+
+    .result-status {
+      border-radius: 12px; padding: 1.1rem 1.35rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.5rem; font-weight: 600;
+    }
+    .result-status.ok     { background: rgba(62,207,110,0.12);  border: 1px solid rgba(62,207,110,0.3);  color: var(--green); }
+    .result-status.warn   { background: rgba(245,200,66,0.1);   border: 1px solid rgba(245,200,66,0.35); color: var(--yellow); }
+    .result-status.empty  { background: rgba(247,111,111,0.1);  border: 1px solid rgba(247,111,111,0.3); color: var(--red); }
+
+    .result-meta { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .meta-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.5rem 0.9rem;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .meta-chip strong { color: var(--text); }
+
+    .route-stops { margin-bottom: 1.75rem; }
+    .stop-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.2rem;
+      margin-bottom: 0.75rem; display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .stop-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 700; flex-shrink: 0;
+    }
+    .stop-info { flex: 1; }
+    .stop-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .stop-loc  { font-size: 0.73rem; color: var(--muted); margin-bottom: 0.6rem; }
+    .stop-mats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .mat-tag {
+      background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.25);
+      border-radius: 6px; padding: 0.2rem 0.55rem;
+      font-size: 0.75rem; color: var(--accent);
+    }
+    .stop-arrow { text-align: center; color: var(--muted); font-size: 1.1rem; margin: -0.25rem 0; }
+
+    .deficit-box {
+      background: rgba(247,111,111,0.08); border: 1px solid rgba(247,111,111,0.3);
+      border-radius: 12px; padding: 1.2rem 1.35rem;
+    }
+    .deficit-title { font-size: 0.85rem; font-weight: 700; color: var(--red); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+    .deficit-row { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid rgba(247,111,111,0.15); }
+    .deficit-row:last-child { border-bottom: none; }
+    .deficit-mat { font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+    .deficit-qty { font-size: 0.9rem; font-weight: 700; color: var(--red); }
+
+    /* ── SPINNER / EMPTY ── */
+    .state-msg { text-align: center; color: var(--muted); padding: 3rem; font-size: 0.95rem; }
+    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 0.75rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── CRUD TOOLBAR ── */
+    .crud-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.1rem; gap: 0.75rem; flex-wrap: wrap;
+    }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65); z-index: 400;
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.75rem; width: 100%; max-width: 440px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .modal-title {
+      font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-close {
+      background: none; border: none; color: var(--muted); font-size: 1.3rem;
+      cursor: pointer; padding: 0 0.2rem; line-height: 1;
+    }
+    .modal-close:hover { color: var(--red); }
+    .modal-field { margin-bottom: 1rem; }
+    .modal-field label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); margin-bottom: 0.35rem;
+    }
+    .modal-field input {
+      width: 100%; padding: 0.65rem 0.9rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.92rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .modal-field input:focus { border-color: var(--accent); }
+    .modal-coords { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .modal-actions { display: flex; gap: 0.6rem; margin-top: 1.4rem; }
+    .modal-actions .btn { flex: 1; justify-content: center; }
+    .modal-err { font-size: 0.8rem; color: var(--red); margin-top: 0.5rem; min-height: 1.1em; }
+
+    /* ── CARD CRUD BUTTONS ── */
+    .card-actions { display: flex; gap: 0.4rem; }
+    .card-btn {
+      width: 28px; height: 28px; border-radius: 7px; border: none;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; cursor: pointer; transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .card-btn-edit  { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .card-btn-edit:hover  { background: rgba(79,142,247,0.3); }
+    .card-btn-del   { background: rgba(247,111,111,0.15); color: var(--red); }
+    .card-btn-del:hover   { background: rgba(247,111,111,0.3); }
+
+    /* confirm delete inline */
+    .del-confirm {
+      display: none; font-size: 0.78rem; color: var(--red);
+      background: rgba(247,111,111,0.1); border: 1px solid rgba(247,111,111,0.3);
+      border-radius: 8px; padding: 0.5rem 0.75rem; margin-top: 0.65rem;
+      align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .del-confirm.open { display: flex; }
+
+
+    /* ── MOBILE NAV OVERLAY ── */
+    .nav-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 250;
+    }
+    .nav-overlay.open { display: block; }
+
+    /* ── HAMBURGER ── */
+    .hamburger {
+      display: none; align-items: center; justify-content: center;
+      width: 38px; height: 38px; border-radius: 9px;
+      background: rgba(255,255,255,0.07); border: 1px solid var(--border);
+      color: var(--text); font-size: 1.25rem; cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+
+      nav {
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+        z-index: 300;
+      }
+      nav.open { transform: translateX(0); }
+
+      .main { margin-left: 0; }
+
+      header { padding: 0.75rem 1rem; gap: 0.5rem; }
+      .header-sub { display: none; }
+
+      .view { padding: 1rem; }
+
+      .totals {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem; margin-bottom: 1.25rem;
+      }
+
+      .search-wrap { max-width: 100%; }
+
+      .grid { grid-template-columns: 1fr; gap: 0.9rem; }
+
+      .btn-label { display: none; }
+
+      .order-layout { gap: 1rem; }
+      .form-card { padding: 1.25rem; }
+    }
+
+    @media (max-width: 480px) {
+      .total-card { padding: 0.75rem; gap: 0.6rem; }
+      .total-icon { width: 36px; height: 36px; font-size: 1.1rem; }
+      .total-info h2 { font-size: 1.1rem; }
+      .total-info p { font-size: 0.68rem; }
+
+      .house-card { padding: 1rem; }
+      .house-name { font-size: 0.92rem; }
+
+      .stop-card { padding: 0.85rem 1rem; gap: 0.75rem; }
+
+      .result-meta { gap: 0.5rem; }
+      .meta-chip { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
+
+      .loc-row { flex-direction: column !important; }
+      .loc-row select, .loc-row button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="nav-overlay" id="navOverlay" onclick="closeNav()"></div>
+
+
+<!-- HOUSE MODAL -->
+<div class="modal-backdrop" id="houseModal" onclick="if(event.target===this) closeHouseModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">
+      <span id="modalTitle">Add house</span>
+      <button class="modal-close" onclick="closeHouseModal()">✕</button>
+    </div>
+    <div class="modal-field">
+      <label>Name</label>
+      <input id="mName" type="text" placeholder="House name" />
+    </div>
+    <div class="modal-field">
+      <label>Location</label>
+      <input id="mLocation" type="text" placeholder="City, region…" />
+    </div>
+    <div class="modal-field">
+      <label>Coordinates <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <div class="modal-coords">
+        <input id="mLat" type="number" step="any" placeholder="Latitude" />
+        <input id="mLng" type="number" step="any" placeholder="Longitude" />
+      </div>
+    </div>
+    <button id="mLocBtn" onclick="fillModalCoords()" style="
+      width:100%;padding:0.55rem;background:var(--card);border:1px solid var(--border);
+      border-radius:8px;color:var(--muted);font-size:0.82rem;cursor:pointer;
+      transition:border-color 0.2s,color 0.2s;margin-top:-0.25rem">
+      📍 Use my current location
+    </button>
+    <p class="modal-err" id="modalErr"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeHouseModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHouse()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav id="mainNav">
+  <div class="nav-brand">
+    <h1 id="brandName">TEDHOUSE LOGISTICS</h1>
+    <p id="brandSub">Materials Management</p>
+  </div>
+  <div class="nav-menu">
+    <div class="nav-item active" id="navDashboard" onclick="showView('dashboard')">
+      <span class="nav-icon">📊</span> <span>Dashboard</span>
+    </div>
+    <div class="nav-item" id="navOrder" onclick="showView('order')">
+      <span class="nav-icon">📦</span> <span>New Order</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- HEADER -->
+  <header>
+    <div>
+      <p class="header-title" id="pageTitle">Dashboard</p>
+      <p class="header-sub" id="pageSub">Surplus materials inventory</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button class="btn btn-ghost" id="pdfBtn" onclick="downloadPDF()" style="color:var(--green);border-color:var(--green)">⬇ <span class="btn-label">PDF</span></button>
+      <button class="btn btn-ghost" id="langBtn" onclick="toggleLang()" style="font-weight:700;letter-spacing:0.05em">🌐 <span class="btn-label">BG</span></button>
+      <button class="btn btn-ghost" id="refreshBtn" onclick="onRefresh()">⟳ <span class="btn-label">Refresh</span></button>
+      <button class="hamburger" onclick="toggleNav()">☰</button>
+    </div>
+  </header>
+
+  <!-- VIEW: DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="totals" id="totals"></div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" type="text" placeholder="Search house..." autocomplete="off"
+        oninput="onSearch()" onkeydown="onSearchKey(event)" onfocus="openAC()" />
+      <button class="search-clear" id="clearBtn" onclick="clearSearch()" title="Clear">✕</button>
+      <div class="autocomplete-list" id="acList"></div>
+    </div>
+
+    <div class="crud-toolbar">
+      <p class="section-label" id="sectionLabel" style="margin-bottom:0">Houses — warehouse detail</p>
+      <button class="btn btn-primary" onclick="openHouseModal()">＋ Add house</button>
+    </div>
+    <div class="grid" id="grid">
+      <div class="state-msg"><div class="spinner"></div><br>Loading...</div>
+    </div>
+  </div>
+
+  <!-- VIEW: NEW ORDER -->
+  <div class="view" id="view-order">
+    <div class="order-layout">
+
+      <!-- FORM -->
+      <div class="form-card">
+        <h2 id="orderFormTitle">📦 New Material Order</h2>
+        <p id="orderFormDesc">Enter the quantity needed for each material. We'll calculate the optimal pickup route using available surpluses.</p>
+
+        <!-- location rows — static, never wiped by innerHTML -->
+        <div class="field" style="margin-bottom:1.1rem">
+          <label id="startingPointLbl" style="color:var(--accent);font-size:0.85rem">📍 Driver starting location</label>
+          <a id="mapPickBtn" href="/map-picker.html" style="display:flex;align-items:center;justify-content:center;padding:0.65rem 0.9rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.88rem;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s;width:100%">
+            🗺 Pick on map
+          </a>
+          <div id="locStatus" style="display:none;margin-top:0.5rem;font-size:0.8rem;color:var(--green);align-items:center;gap:0.4rem"></div>
+        </div>
+        <div class="field" style="margin-bottom:1.4rem">
+          <label id="destHouseLbl" style="color:var(--accent);font-size:0.85rem">🏠 Destination house</label>
+          <select id="destHouse" style="width:100%;padding:0.65rem 0.9rem;background:var(--card);border:1px solid var(--accent);border-radius:8px;color:var(--text);font-size:0.92rem;outline:none;">
+            <option value="">— Select destination —</option>
+          </select>
+        </div>
+
+        <div id="materialFields">
+          <div class="state-msg"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Fuel cost inputs — static -->
+        <div style="border-top:1px solid var(--border);margin-top:0.25rem;padding-top:1rem;margin-bottom:0.9rem">
+          <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:600" id="fuelSectionLabel">⛽ Fuel estimate</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem">
+            <div class="field" style="margin-bottom:0">
+              <label id="fuelConsLbl" style="font-size:0.78rem">L / 100 km</label>
+              <input id="fuelConsumption" type="number" min="1" max="99" step="0.1" value="8" />
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <label id="fuelPriceLbl" style="font-size:0.78rem">€ / litre</label>
+              <input id="fuelPrice" type="number" min="0.01" max="9.99" step="0.01" value="1.80" />
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:0.5rem" id="calcBtn" onclick="calculateOrder()">
+          Calculate optimal route
+        </button>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="results">
+        <div class="state-msg" style="padding:4rem 2rem">
+          <div style="font-size:2rem;margin-bottom:0.75rem">🗺️</div>
+          <span id="formHint">Fill in the form and click</span><br><strong id="formHintStrong">Calculate optimal route</strong>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+  // ── i18n ────────────────────────────────────────────────────────────────────
+  const i18n = {
+    en: {
+      brandName:'TEDHOUSE LOGISTICS', brandSub:'Materials Management',
+      navDashboard:'Dashboard', navOrder:'New Order',
+      pageTitle_dashboard:'Dashboard', pageSub_dashboard:'Surplus materials inventory',
+      pageTitle_order:'New Order', pageSub_order:'Calculate optimal pickup route',
+      refresh:'⟳ Refresh', langBtn:'🌐 BG', pdfBtn:'⬇ PDF',
+      searchPlaceholder:'Search house...', searchClear:'Clear',
+      sectionLabel:'Houses — warehouse detail',
+      loading:'Loading...', noData:'No data.', connError:'Connection error.',
+      totalInventory:'Total inventory value', totalWarehouse:'Total warehouse value',
+      orderFormTitle:'📦 New Material Order',
+      orderFormDesc:"Enter the quantity needed for each material. We'll calculate the optimal pickup route using available surpluses.",
+      startingPoint:'📍 Driver starting location', destHouseLabel:'🏠 Destination house',
+      selectDestHouse:'— Select destination —', locFound:'Driver location',
+      requiredMaterials:'Required materials', unitLabel:'Unit:',
+      calcBtn:'Calculate optimal route',
+      formHint:'Fill in the form and click', formHintStrong:'Calculate optimal route',
+      selectStartLocation:'⚠ Please pick a starting location on the map.',
+      selectDestHouseErr:'⚠ Please select a destination house.',
+      enterQty:'⚠ Enter at least one material quantity.',
+      calculating:'Calculating optimal route...', errLoadData:'Error loading data.',
+      orderOk:'✅ Order fully covered by existing surpluses',
+      orderWarn:'⚠️ Insufficient surpluses — missing {deficit} — will be ordered from supplier',
+      stops:'stops', estimated:'estimated', openMaps:'↗ Open in Google Maps',
+      startingPointLabel:'Starting point', noMaterials:'No materials to contribute',
+      pickupRoute:'Pickup route', noHouses:'No houses with available materials.',
+      fromSupplier:'🏭 Materials to order from supplier',
+      supplierStop:'Supplier stop', supplierNote:'Collect missing materials here',
+      kmFromLast:'km from last house',
+      Wood:'Wood', Screws:'Screws', Boards:'Boards', Tiles:'Tiles',
+      unidades:'units', 'm²':'m²',
+    },
+    bg: {
+      brandName:'Теодор Логистика', brandSub:'Управление на материали',
+      navDashboard:'Табло', navOrder:'Нова поръчка',
+      pageTitle_dashboard:'Табло', pageSub_dashboard:'Инвентар на излишни материали',
+      pageTitle_order:'Нова поръчка', pageSub_order:'Изчисли оптимален маршрут',
+      refresh:'⟳ Опресни', langBtn:'🌐 EN', pdfBtn:'⬇ PDF',
+      searchPlaceholder:'Търси къща...', searchClear:'Изчисти',
+      sectionLabel:'Къщи — детайли на склад',
+      loading:'Зареждане...', noData:'Няма данни.', connError:'Грешка при свързване.',
+      totalInventory:'Обща стойност на инвентара', totalWarehouse:'Обща стойност на склада',
+      orderFormTitle:'📦 Нова поръчка за материали',
+      orderFormDesc:'Въведете необходимото количество за всеки материал. Ще изчислим оптималния маршрут за събиране на наличните излишъци.',
+      startingPoint:'📍 Начална локация на шофьора', destHouseLabel:'🏠 Целева къща',
+      selectDestHouse:'— Изберете дестинация —', locFound:'Локация на шофьора',
+      requiredMaterials:'Необходими материали', unitLabel:'Единица:',
+      calcBtn:'Изчисли оптимален маршрут',
+      formHint:'Попълнете формуляра и натиснете', formHintStrong:'Изчисли оптимален маршрут',
+      selectStartLocation:'⚠ Моля изберете начална локация на картата.',
+      selectDestHouseErr:'⚠ Моля изберете целева къща.',
+      enterQty:'⚠ Въведете поне едно количество.',
+      calculating:'Изчисляване на оптимален маршрут...', errLoadData:'Грешка при зареждане.',
+      orderOk:'✅ Поръчката е напълно покрита от наличните излишъци',
+      orderWarn:'⚠️ Недостатъчни излишъци — липсва {deficit} — ще бъде поръчано от доставчик',
+      stops:'спирки', estimated:'прибл.', openMaps:'↗ Отвори в Google Maps',
+      startingPointLabel:'Начална точка', noMaterials:'Няма материали за принос',
+      pickupRoute:'Маршрут за събиране', noHouses:'Няма къщи с налични материали.',
+      fromSupplier:'🏭 Материали за поръчка от доставчик',
+      supplierStop:'Спирка при доставчик', supplierNote:'Вземете липсващите материали тук',
+      kmFromLast:'км от последната къща',
+      Wood:'Дърво', Screws:'Винтове', Boards:'Дъски', Tiles:'Керемиди',
+      unidades:'бр.', 'm²':'m²',
+    },
+  };
+
+  let currentLang = 'en';
+  const t  = k => i18n[currentLang][k] ?? k;
+  const mn = n => t(n) || n;   // material name
+  const mu = u => t(u) || u;   // material unit
+  const fmt  = n => Number(n).toLocaleString(currentLang === 'bg' ? 'bg-BG' : 'en-US');
+  const euro = n => Number(n).toLocaleString(currentLang === 'bg' ? 'bg-BG' : 'en-US', { style:'currency', currency:'EUR' });
+
+  function toggleLang() {
+    currentLang = currentLang === 'en' ? 'bg' : 'en';
+    translateStatic();
+    const activeView = document.querySelector('.view.active').id.replace('view-','');
+    if (activeView === 'dashboard') loadDashboard();
+    else { loadMaterialFields(); resetResults(); }
+  }
+
+  function translateStatic() {
+    document.getElementById('brandName').textContent    = t('brandName');
+    document.getElementById('brandSub').textContent     = t('brandSub');
+    document.getElementById('navDashboard').querySelector('span:last-child').textContent = t('navDashboard');
+    document.getElementById('navOrder').querySelector('span:last-child').textContent     = t('navOrder');
+    document.getElementById('pdfBtn').querySelector('.btn-label').textContent     = 'PDF';
+    document.getElementById('langBtn').querySelector('.btn-label').textContent     = currentLang === 'en' ? 'BG' : 'EN';
+    document.getElementById('refreshBtn').querySelector('.btn-label').textContent  = currentLang === 'en' ? 'Refresh' : 'Опресни';
+    document.getElementById('searchInput').placeholder  = t('searchPlaceholder');
+    document.getElementById('clearBtn').title           = t('searchClear');
+    document.getElementById('sectionLabel').textContent = t('sectionLabel');
+    document.getElementById('orderFormTitle').textContent = t('orderFormTitle');
+    document.getElementById('orderFormDesc').textContent  = t('orderFormDesc');
+    document.getElementById('calcBtn').textContent        = t('calcBtn');
+    document.getElementById('formHint').textContent       = t('formHint');
+    document.getElementById('formHintStrong').textContent = t('formHintStrong');
+    const activeView = document.querySelector('.view.active')?.id.replace('view-','') || 'dashboard';
+    document.getElementById('pageTitle').textContent = t(`pageTitle_${activeView}`);
+    document.getElementById('pageSub').textContent   = t(`pageSub_${activeView}`);
+  }
+
+  function resetResults() {
+    document.getElementById('results').innerHTML = `
+      <div class="state-msg" style="padding:4rem 2rem">
+        <div style="font-size:2rem;margin-bottom:0.75rem">🗺️</div>
+        <span id="formHint">${t('formHint')}</span><br><strong id="formHintStrong">${t('formHintStrong')}</strong>
+      </div>`;
+  }
+
+  const MAT_META = {
+    'Wood':   { icon: '🪵', cls: 'bar-wood',   color: '#3ecf6e' },
+    'Screws': { icon: '🔩', cls: 'bar-screws', color: '#4f8ef7' },
+    'Boards': { icon: '🪜', cls: 'bar-boards', color: '#f5c842' },
+    'Tiles':  { icon: '🏠', cls: 'bar-tiles',  color: '#f76f6f' },
+  };
+
+  let materials   = [];
+  let dashHouses  = [];
+  let dashTotals  = [];
+  let driverCoords = null; // { lat, lng } when GPS is active
+
+  // ── NAV ─────────────────────────────────────────────────────────────────────
+  function toggleNav() {
+    document.getElementById('mainNav').classList.toggle('open');
+    document.getElementById('navOverlay').classList.toggle('open');
+  }
+
+  function closeNav() {
+    document.getElementById('mainNav').classList.remove('open');
+    document.getElementById('navOverlay').classList.remove('open');
+  }
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.getElementById(`view-${name}`).classList.add('active');
+    event.currentTarget.classList.add('active');
+
+    document.getElementById('pageTitle').textContent = t(`pageTitle_${name}`);
+    document.getElementById('pageSub').textContent   = t(`pageSub_${name}`);
+    closeNav();
+  }
+
+  function onRefresh() {
+    const active = document.querySelector('.view.active').id;
+    if (active === 'view-dashboard') loadDashboard();
+    if (active === 'view-order')     loadMaterialFields();
+  }
+
+  // ── DASHBOARD ────────────────────────────────────────────────────────────────
+  async function loadDashboard() {
+    document.getElementById('grid').innerHTML =
+      `<div class="state-msg"><div class="spinner"></div><br>${t('loading')}</div>`;
+    try {
+      const [houses, totals] = await Promise.all([
+        fetch('/api/houses').then(r => r.json()),
+        fetch('/api/totals').then(r => r.json()),
+      ]);
+      dashHouses = houses;
+      dashTotals = totals;
+      renderTotals(totals);
+      renderHouses(houses);
+    } catch (e) {
+      document.getElementById('grid').innerHTML =
+        `<div class="state-msg">${t('connError')}<br><small>${e.message}</small></div>`;
+    }
+  }
+
+  function renderTotals(totals) {
+    const grandTotal = totals.reduce((s, t) => s + parseFloat(t.total_value), 0);
+
+    const materialCards = totals.map(t => {
+      const m = MAT_META[t.name] || { icon: '📦' };
+      return `<div class="total-card">
+        <div class="total-icon">${m.icon}</div>
+        <div class="total-info">
+          <p>${mn(t.name)} · ${euro(t.price)} / ${mu(t.unit)}</p>
+          <h2>${fmt(t.total)} <small style="font-size:0.52em;color:var(--muted)">${mu(t.unit)}</small></h2>
+          <p style="font-size:0.78rem;color:var(--green);margin-top:0.15rem;font-weight:600">${euro(t.total_value)}</p>
+        </div>
+      </div>`;
+    }).join('');
+
+    const grandCard = `
+      <div class="total-card" style="border-color:var(--green);background:rgba(62,207,110,0.06)">
+        <div class="total-icon" style="background:rgba(62,207,110,0.18);font-size:1.6rem">💰</div>
+        <div class="total-info">
+          <p style="color:var(--green);font-weight:600">${t('totalInventory')}</p>
+          <h2 style="color:var(--green)">${euro(grandTotal)}</h2>
+        </div>
+      </div>`;
+
+    document.getElementById('totals').innerHTML = materialCards + grandCard;
+  }
+
+  function renderHouses(houses) {
+    if (!houses.length) {
+      document.getElementById('grid').innerHTML = `<div class="state-msg">${t('noData')}</div>`;
+      return;
+    }
+    const houseMax = {};
+    houses.forEach(h => h.materials.forEach(m => {
+      houseMax[m.name] = Math.max(houseMax[m.name] || 0, m.quantity);
+    }));
+    initSearch(houses);
+    document.getElementById('grid').innerHTML = houses.map(h => `
+      <div class="house-card" data-name="${h.name}" data-loc="${h.location}" onclick="selectCard(this)">
+        <div class="house-header">
+          <div>
+            <p class="house-name">${h.name}</p>
+            <p class="house-loc">📍 ${h.location}</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem">
+            <span class="house-id">#${h.id}</span>
+            <div class="card-actions" onclick="event.stopPropagation()">
+              <button class="card-btn card-btn-edit" title="Edit" onclick="openHouseModal(${h.id})">✏</button>
+              <button class="card-btn card-btn-del"  title="Delete" onclick="askDelete(this,${h.id},'${h.name.replace(/'/g,"\\'")}')">🗑</button>
+            </div>
+          </div>
+        </div>
+        <div class="del-confirm" id="del-${h.id}">
+          <span>Delete <strong>${h.name}</strong>?</span>
+          <button class="btn btn-ghost" style="padding:0.25rem 0.65rem;font-size:0.76rem" onclick="cancelDelete(${h.id})">No</button>
+          <button class="btn" style="padding:0.25rem 0.65rem;font-size:0.76rem;background:var(--red);color:#fff" onclick="confirmDelete(${h.id})">Yes, delete</button>
+        </div>
+        ${h.materials.map(m => {
+          const meta = MAT_META[m.name] || { icon: '📦', cls: 'bar-boards', color: '#7a85a3' };
+          const pct  = houseMax[m.name] ? Math.round((m.quantity / houseMax[m.name]) * 100) : 0;
+          return `<div class="material-row">
+            <div class="mat-label">
+              <span class="mat-name">
+                <span class="mat-dot" style="background:${meta.color}"></span>
+                ${meta.icon} ${mn(m.name)}
+              </span>
+              <span class="mat-value">
+                <strong>${fmt(m.quantity)}</strong> ${mu(m.unit)}
+                <span style="color:var(--green);margin-left:0.4rem">${euro(m.subtotal)}</span>
+              </span>
+            </div>
+            <div class="bar-track"><div class="bar-fill ${meta.cls}" style="width:${pct}%"></div></div>
+          </div>`;
+        }).join('')}
+        <div style="border-top:1px solid var(--border);margin-top:0.9rem;padding-top:0.7rem;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:0.75rem;color:var(--muted)">${t('totalWarehouse')}</span>
+          <span style="font-size:0.95rem;font-weight:700;color:var(--green)">${euro(h.totalValue)}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── ORDER FORM ───────────────────────────────────────────────────────────────
+  async function loadMaterialFields() {
+    // Reset location state
+    driverCoords = null;
+    const mapPickBtn = document.getElementById('mapPickBtn');
+    if (mapPickBtn) {
+      mapPickBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:0.65rem 0.9rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.88rem;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s;width:100%';
+      mapPickBtn.textContent = '🗺 Pick on map';
+      mapPickBtn.href = '/map-picker.html';
+      mapPickBtn.onclick = null;
+    }
+    const locStatus = document.getElementById('locStatus');
+    if (locStatus) locStatus.style.display = 'none';
+
+    document.getElementById('startingPointLbl').textContent = t('startingPoint');
+    document.getElementById('destHouseLbl').textContent     = t('destHouseLabel');
+
+    try {
+      const [mats, houses] = await Promise.all([
+        fetch('/api/materials').then(r => r.json()),
+        fetch('/api/houses').then(r => r.json()),
+      ]);
+      materials = mats;
+
+      // Populate destination house dropdown
+      const sel = document.getElementById('destHouse');
+      sel.innerHTML = `<option value="">${t('selectDestHouse')}</option>` +
+        houses.map(h => `<option value="${h.id}">${h.name} — ${h.location}</option>`).join('');
+
+      // Populate material inputs
+      document.getElementById('materialFields').innerHTML = `
+        <div style="border-top:1px solid var(--border);margin-bottom:1.2rem;padding-top:1.2rem">
+          <p style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:600">${t('requiredMaterials')}</p>
+          ${mats.map(m => {
+            const meta = MAT_META[m.name] || { icon: '📦' };
+            return `<div class="field">
+              <label>${meta.icon} ${mn(m.name)}</label>
+              <input type="number" id="mat_${m.id}" min="0" step="1" placeholder="0" />
+              <p class="unit">${t('unitLabel')} ${mu(m.unit)}</p>
+            </div>`;
+          }).join('')}
+        </div>`;
+    } catch (e) {
+      document.getElementById('materialFields').innerHTML =
+        `<div class="state-msg" style="padding:1rem">${t('errLoadData')}<br><small style="color:var(--muted)">${e.message}</small></div>`;
+    }
+  }
+
+  async function calculateOrder() {
+    if (!driverCoords) {
+      document.getElementById('results').innerHTML =
+        `<div class="state-msg" style="padding:2rem"><span style="color:var(--red)">${t('selectStartLocation')}</span></div>`;
+      return;
+    }
+    const destHouseId = parseInt(document.getElementById('destHouse')?.value);
+    if (!destHouseId) {
+      document.getElementById('results').innerHTML =
+        `<div class="state-msg" style="padding:2rem"><span style="color:var(--red)">${t('selectDestHouseErr')}</span></div>`;
+      return;
+    }
+
+    const mats = {};
+    let hasAny = false;
+    for (const m of materials) {
+      const val = parseFloat(document.getElementById(`mat_${m.id}`).value) || 0;
+      if (val > 0) hasAny = true;
+      mats[m.id] = val;
+    }
+    if (!hasAny) {
+      document.getElementById('results').innerHTML =
+        `<div class="state-msg" style="padding:2rem"><span style="color:var(--red)">${t('enterQty')}</span></div>`;
+      return;
+    }
+
+    document.getElementById('results').innerHTML =
+      `<div class="state-msg"><div class="spinner"></div><br>${t('calculating')}</div>`;
+
+    const body = { startLat: driverCoords.lat, startLng: driverCoords.lng, startName: t('locFound'), destinationHouseId: destHouseId, materials: mats, lang: currentLang };
+
+    try {
+      const data = await fetch('/api/calculate-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(r => r.json());
+
+      if (data.error) throw new Error(data.error);
+      renderResults(data, mats);
+    } catch (e) {
+      document.getElementById('results').innerHTML =
+        `<div class="state-msg">Error: ${e.message}</div>`;
+    }
+  }
+
+  function renderResults(data, order) {
+    const { origin, destination, route, deficit, mapsUrl, fullyFulfilled, totalStops, totalDistance } = data;
+
+    const consumption = parseFloat(document.getElementById('fuelConsumption')?.value) || 8;
+    const pricePerL   = parseFloat(document.getElementById('fuelPrice')?.value) || 1.80;
+    const fuelLitres  = totalDistance * consumption / 100;
+    const fuelCost    = fuelLitres * pricePerL;
+
+    const deficitSummary = deficit.map(d =>
+      `${fmt(d.quantity)} ${mn(d.name)} (${mu(d.unit)})`
+    ).join(', ');
+
+    const statusHtml = fullyFulfilled
+      ? `<div class="result-status ok">${t('orderOk')}</div>`
+      : `<div class="result-status warn">${t('orderWarn').replace('{deficit}', `<strong>${deficitSummary}</strong>`)}</div>`;
+
+    const metaHtml = `
+      <div class="result-meta">
+        <div class="meta-chip">🚩 <strong>${origin.name}</strong></div>
+        <div class="meta-chip">🏁 <strong>${destination.name}</strong></div>
+        <div class="meta-chip">🏠 <strong>${totalStops + (data.supplier ? 1 : 0)}</strong> ${t('stops')}</div>
+        <div class="meta-chip">📏 ~<strong>${totalDistance} km</strong> ${t('estimated')}</div>
+        <div class="meta-chip">⛽ ~<strong>${euro(fuelCost)}</strong> <span style="font-weight:400">(${fuelLitres.toFixed(1)} L)</span></div>
+        ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" class="btn btn-green" style="text-decoration:none;border-radius:8px;padding:0.5rem 0.9rem;font-size:0.8rem">
+          ${t('openMaps')}
+        </a>` : ''}
+      </div>`;
+
+    const originCard = `
+      <div class="stop-card" style="border-color:var(--accent);background:rgba(79,142,247,0.07)">
+        <div class="stop-num" style="background:var(--accent)">🚩</div>
+        <div class="stop-info">
+          <p class="stop-name">${origin.name}</p>
+          <p class="stop-loc">📍 ${origin.location} &nbsp;·&nbsp; <span style="color:var(--accent)">${t('startingPointLabel')}</span></p>
+        </div>
+      </div>
+      ${route.length > 0 ? '<div class="stop-arrow">↓</div>' : ''}`;
+
+    const destCard = `
+      <div class="stop-arrow">↓</div>
+      <div class="stop-card" style="border-color:var(--green);background:rgba(62,207,110,0.06)">
+        <div class="stop-num" style="background:var(--green);color:#0f1117">🏁</div>
+        <div class="stop-info">
+          <p class="stop-name">${destination.name}</p>
+          <p class="stop-loc">📍 ${destination.location} &nbsp;·&nbsp; <span style="color:var(--green)">Destination</span></p>
+        </div>
+      </div>`;
+
+    const stopsHtml = `
+      <p class="section-label" style="margin-bottom:0.85rem">${t('pickupRoute')}</p>
+      <div class="route-stops">
+        ${originCard}
+        ${route.map((stop, i, arr) => {
+          const mats = Object.values(stop.contribution).map(c =>
+            `<span class="mat-tag">${MAT_META[c.name]?.icon || '📦'} ${mn(c.name)}: ${fmt(c.quantity)} ${mu(c.unit)}</span>`
+          ).join('');
+          return `
+            <div class="stop-card">
+              <div class="stop-num">${i + 1}</div>
+              <div class="stop-info">
+                <p class="stop-name">${stop.name}</p>
+                <p class="stop-loc">📍 ${stop.location}</p>
+                <div class="stop-mats">${mats}</div>
+              </div>
+            </div>
+            <div class="stop-arrow">↓</div>`;
+        }).join('')}
+        ${route.length === 0 ? '<div class="stop-arrow">↓</div>' : ''}
+        ${data.supplier ? `
+        <div class="stop-card" style="border-color:var(--red);background:rgba(247,111,111,0.06)">
+          <div class="stop-num" style="background:var(--red)">🏭</div>
+          <div class="stop-info">
+            <p class="stop-name">${data.supplier.name}</p>
+            <p class="stop-loc">📍 ${data.supplier.location}
+              &nbsp;·&nbsp; <span style="color:var(--red)">${t('supplierStop')}</span>
+              &nbsp;·&nbsp; <span style="color:var(--muted)">${data.supplier.distanceFromLastStop} ${t('kmFromLast')}</span>
+            </p>
+            <p style="font-size:0.73rem;color:var(--muted);margin-top:0.35rem">${t('supplierNote')}</p>
+            <div class="stop-mats" style="margin-top:0.5rem">
+              ${deficit.map(d => {
+                const meta = MAT_META[d.name] || { icon: '📦' };
+                return `<span class="mat-tag" style="border-color:rgba(247,111,111,0.4);color:var(--red);background:rgba(247,111,111,0.1)">
+                  ${meta.icon} ${mn(d.name)}: ${fmt(d.quantity)} ${mu(d.unit)}
+                </span>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>` : ''}
+        ${destCard}
+      </div>`;
+
+    document.getElementById('results').innerHTML =
+      statusHtml + metaHtml + stopsHtml;
+  }
+
+  // ── SEARCH / AUTOCOMPLETE ────────────────────────────────────────────────────
+  let allHouseNames = [];   // [{id, name, location}]
+  let acFocusIdx    = -1;
+
+  function initSearch(houses) {
+    allHouseNames = houses.map(h => ({ id: h.id, name: h.name, location: h.location }));
+  }
+
+  function onSearch() {
+    acFocusIdx = -1;
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    filterCards(q);
+    if (q.length === 0) { closeAC(); return; }
+    renderAC(q);
+  }
+
+  function filterCards(q) {
+    document.getElementById('clearBtn').classList.toggle('visible', q.length > 0);
+    document.querySelectorAll('.house-card').forEach(card => {
+      const name = (card.dataset.name || '').toLowerCase();
+      const loc  = (card.dataset.loc  || '').toLowerCase();
+      const match = !q || name.includes(q) || loc.includes(q);
+      card.classList.toggle('hidden', !match);
+      card.classList.remove('highlighted');
+    });
+  }
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    filterCards('');
+    closeAC();
+  }
+
+  function selectCard(el) {
+    const cards = [...document.querySelectorAll('.house-card')];
+    const isSelected = el.classList.contains('selected');
+    // Deselect all
+    cards.forEach(c => { c.classList.remove('selected', 'hidden'); });
+    if (!isSelected) {
+      // Isolate clicked card
+      el.classList.add('selected');
+      cards.forEach(c => { if (c !== el) c.classList.add('hidden'); });
+    }
+    // Sync search bar
+    if (!isSelected) {
+      document.getElementById('searchInput').value = el.dataset.name;
+      document.getElementById('clearBtn').classList.add('visible');
+    } else {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearBtn').classList.remove('visible');
+    }
+    closeAC();
+  }
+
+  // ── HOUSE CRUD ───────────────────────────────────────────────────────────────
+  let _editingHouseId = null;
+
+  function openHouseModal(houseId) {
+    const house = houseId != null ? dashHouses.find(h => h.id === houseId) : null;
+    _editingHouseId = house ? house.id : null;
+    document.getElementById('modalTitle').textContent = house ? `Edit — ${house.name}` : 'Add house';
+    document.getElementById('mName').value     = house ? house.name     : '';
+    document.getElementById('mLocation').value = house ? house.location : '';
+    document.getElementById('mLat').value      = house?.lat ?? '';
+    document.getElementById('mLng').value      = house?.lng ?? '';
+    document.getElementById('modalErr').textContent = '';
+    document.getElementById('mLocBtn').textContent   = '📍 Use my current location';
+    document.getElementById('mLocBtn').style.color   = '';
+    document.getElementById('mLocBtn').style.borderColor = '';
+    document.getElementById('houseModal').classList.add('open');
+    document.getElementById('mName').focus();
+  }
+
+  function closeHouseModal() {
+    document.getElementById('houseModal').classList.remove('open');
+    _editingHouseId = null;
+  }
+
+  async function saveHouse() {
+    const name     = document.getElementById('mName').value.trim();
+    const location = document.getElementById('mLocation').value.trim();
+    const lat      = document.getElementById('mLat').value;
+    const lng      = document.getElementById('mLng').value;
+    const errEl    = document.getElementById('modalErr');
+
+    if (!name || !location) {
+      errEl.textContent = 'Name and location are required.';
+      return;
+    }
+    errEl.textContent = '';
+
+    const body = { name, location, lat: lat || null, lng: lng || null };
+    const url    = _editingHouseId ? `/api/houses/${_editingHouseId}` : '/api/houses';
+    const method = _editingHouseId ? 'PUT' : 'POST';
+
+    try {
+      const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error(`Server returned unexpected response (${res.status}). Is the server running?`); }
+      if (data.error) throw new Error(data.error);
+      closeHouseModal();
+      loadDashboard();
+    } catch (e) {
+      errEl.textContent = e.message;
+    }
+  }
+
+  function askDelete(btn, id, name) {
+    document.querySelectorAll('.del-confirm.open').forEach(el => el.classList.remove('open'));
+    document.getElementById(`del-${id}`).classList.add('open');
+  }
+
+  function cancelDelete(id) {
+    document.getElementById(`del-${id}`).classList.remove('open');
+  }
+
+  async function confirmDelete(id) {
+    try {
+      const res  = await fetch(`/api/houses/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      loadDashboard();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function fillModalCoords() {
+    const btn = document.getElementById('mLocBtn');
+    if (!navigator.geolocation) return;
+    btn.textContent = '📍 Locating…';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        document.getElementById('mLat').value = pos.coords.latitude.toFixed(6);
+        document.getElementById('mLng').value = pos.coords.longitude.toFixed(6);
+        btn.textContent = '📍 Location filled ✓';
+        btn.style.color = 'var(--green)';
+        btn.style.borderColor = 'var(--green)';
+      },
+      () => { btn.textContent = '📍 Could not get location'; },
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
+  }
+
+  // ── MAP PICKER (localStorage round-trip) ─────────────────────────────────────
+  function applyPendingMapPin() {
+    const raw = localStorage.getItem('mapPin');
+    if (!raw) return;
+    localStorage.removeItem('mapPin');
+    try {
+      const coords = JSON.parse(raw);
+      driverCoords = { lat: coords.lat, lng: coords.lng };
+      const status = document.getElementById('locStatus');
+      if (status) {
+        status.style.display = 'flex';
+        status.textContent = '📍 ' + driverCoords.lat.toFixed(5) + ', ' + driverCoords.lng.toFixed(5);
+      }
+      const btn = document.getElementById('mapPickBtn');
+      if (btn) {
+        btn.style.background  = 'rgba(62,207,110,0.08)';
+        btn.style.borderColor = '#3ecf6e';
+        btn.style.color       = '#3ecf6e';
+        btn.textContent       = '🗺 ✓ ' + driverCoords.lat.toFixed(5) + ', ' + driverCoords.lng.toFixed(5);
+        btn.href              = '#';
+        btn.onclick = function(e) {
+          e.preventDefault();
+          driverCoords = null;
+          btn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:0.65rem 0.9rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.88rem;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s;width:100%';
+          btn.textContent = '🗺 Pick on map';
+          btn.href  = '/map-picker.html';
+          btn.onclick = null;
+          if (status) status.style.display = 'none';
+        };
+      }
+    } catch(e) {}
+  }
+
+  // ── PDF EXPORT ───────────────────────────────────────────────────────────────
+  function downloadPDF() {
+    if (!dashHouses.length) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, margin = 14, colW = W - margin * 2;
+    let y = 0;
+
+    // PDF always uses English to avoid Cyrillic encoding issues with built-in fonts
+    const tpdf  = k => i18n.en[k] ?? k;
+    const mnpdf = n => i18n.en[n] || n;
+    const mupdf = u => i18n.en[u] || u;
+
+    const checkPage = (need = 10) => {
+      if (y + need > 280) { doc.addPage(); y = 14; }
+    };
+
+    // Determine which houses are visible
+    const visibleNames = new Set(
+      [...document.querySelectorAll('.house-card:not(.hidden)')].map(c => c.dataset.name)
+    );
+    const houses = dashHouses.filter(h => visibleNames.has(h.name));
+    const totals = dashTotals;
+
+    // ── HEADER BAND ──
+    doc.setFillColor(21, 101, 192);
+    doc.rect(0, 0, W, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text('TEDHOUSE LOGISTICS — Inventory Report', margin, 10);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    const dateStr = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
+    doc.text(dateStr, margin, 17);
+    doc.text(`${houses.length} house${houses.length !== 1 ? 's' : ''}`, W - margin, 17, { align: 'right' });
+    y = 30;
+
+    // ── TOTALS TABLE ──
+    doc.setTextColor(30, 30, 50);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(tpdf('totalInventory').toUpperCase(), margin, y); y += 5;
+
+    // Table header
+    doc.setFillColor(240, 244, 248);
+    doc.rect(margin, y, colW, 7, 'F');
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 90, 120);
+    doc.text('Material', margin + 2, y + 5);
+    doc.text('Qty', margin + 70, y + 5, { align: 'right' });
+    doc.text('Unit', margin + 85, y + 5);
+    doc.text('Price / unit', margin + 120, y + 5, { align: 'right' });
+    doc.text('Total value', W - margin - 2, y + 5, { align: 'right' });
+    y += 7;
+
+    let grandTotal = 0;
+    totals.forEach((row, i) => {
+      doc.setFillColor(i % 2 === 0 ? 255 : 249, i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 255);
+      doc.rect(margin, y, colW, 7, 'F');
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 30, 50);
+      doc.text(mnpdf(row.name), margin + 2, y + 5);
+      doc.text(fmt(row.total), margin + 70, y + 5, { align: 'right' });
+      doc.text(mupdf(row.unit), margin + 85, y + 5);
+      doc.text(euro(row.price) + ' / ' + mupdf(row.unit), margin + 120, y + 5, { align: 'right' });
+      doc.setTextColor(30, 160, 80);
+      doc.text(euro(row.total_value), W - margin - 2, y + 5, { align: 'right' });
+      grandTotal += parseFloat(row.total_value);
+      y += 7;
+    });
+
+    // Grand total row
+    doc.setFillColor(21, 101, 192);
+    doc.rect(margin, y, colW, 8, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('GRAND TOTAL', margin + 2, y + 5.5);
+    doc.text(euro(grandTotal), W - margin - 2, y + 5.5, { align: 'right' });
+    y += 14;
+
+    // ── PER-HOUSE SECTIONS ──
+    doc.setTextColor(30, 30, 50);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text('Houses — Warehouse Detail', margin, y); y += 6;
+
+    houses.forEach(h => {
+      checkPage(40);
+
+      // House header
+      doc.setFillColor(33, 37, 58);
+      doc.rect(margin, y, colW, 9, 'F');
+      doc.setTextColor(226, 232, 240); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text(`🏠 ${h.name}`, margin + 3, y + 6);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(122, 133, 163);
+      doc.text(`📍 ${h.location}`, margin + 3, y + 12 > y + 9 ? y + 6 : y + 6);
+      doc.setTextColor(62, 207, 110); doc.setFont('helvetica', 'bold');
+      doc.text(euro(h.totalValue), W - margin - 3, y + 6, { align: 'right' });
+      y += 9;
+
+      // Location sub-line
+      doc.setFillColor(46, 50, 80);
+      doc.rect(margin, y, colW, 6, 'F');
+      doc.setTextColor(122, 133, 163); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+      doc.text(`📍 ${h.location}   #${h.id}`, margin + 3, y + 4.3);
+      y += 6;
+
+      // Material rows
+      h.materials.forEach((m, i) => {
+        checkPage(7);
+        doc.setFillColor(i % 2 === 0 ? 38 : 34, i % 2 === 0 ? 42 : 39, i % 2 === 0 ? 65 : 58);
+        doc.rect(margin, y, colW, 7, 'F');
+        doc.setTextColor(226, 232, 240); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+        doc.text(mnpdf(m.name), margin + 3, y + 5);
+        doc.text(`${fmt(m.quantity)} ${mupdf(m.unit)}`, margin + 90, y + 5, { align: 'right' });
+        doc.setTextColor(62, 207, 110);
+        doc.text(euro(m.subtotal), W - margin - 3, y + 5, { align: 'right' });
+        y += 7;
+      });
+
+      y += 5;
+    });
+
+    // Footer
+    doc.setFontSize(7); doc.setTextColor(150, 150, 170); doc.setFont('helvetica', 'normal');
+    doc.text('TEDHOUSE LOGISTICS — generated by dashboard', margin, 290);
+    doc.text(new Date().toISOString().slice(0, 19).replace('T', ' '), W - margin, 290, { align: 'right' });
+
+    const filename = `teodor-inventory-${new Date().toISOString().slice(0,10)}.pdf`;
+    doc.save(filename);
+  }
+
+  function renderAC(q) {
+    const matches = allHouseNames.filter(h =>
+      h.name.toLowerCase().includes(q) || h.location.toLowerCase().includes(q)
+    ).slice(0, 6);
+
+    const list = document.getElementById('acList');
+    if (!matches.length) { list.classList.remove('open'); return; }
+
+    list.innerHTML = matches.map((h, i) => {
+      const hl = str => str.replace(new RegExp(`(${q})`, 'gi'), '<span class="ac-highlight">$1</span>');
+      return `<div class="ac-item" data-id="${h.id}" data-name="${h.name}"
+                   onmousedown="selectAC('${h.name}')">
+        🏠 ${hl(h.name)} <span style="color:var(--muted);font-size:0.78rem;margin-left:auto">📍 ${hl(h.location)}</span>
+      </div>`;
+    }).join('');
+    list.classList.add('open');
+  }
+
+  function selectAC(name) {
+    document.getElementById('searchInput').value = name;
+    closeAC();
+    filterCards(name.toLowerCase());
+    // Scroll to the highlighted card
+    const card = [...document.querySelectorAll('.house-card')]
+      .find(c => c.dataset.name === name);
+    if (card) {
+      card.classList.add('highlighted');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function openAC() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (q.length > 0) renderAC(q);
+  }
+
+  function closeAC() {
+    document.getElementById('acList').classList.remove('open');
+    acFocusIdx = -1;
+  }
+
+  function onSearchKey(e) {
+    const items = document.querySelectorAll('#acList .ac-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acFocusIdx = Math.min(acFocusIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('focused', i === acFocusIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acFocusIdx = Math.max(acFocusIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('focused', i === acFocusIdx));
+    } else if (e.key === 'Enter' && acFocusIdx >= 0) {
+      e.preventDefault();
+      selectAC(items[acFocusIdx].dataset.name);
+    } else if (e.key === 'Escape') {
+      clearSearch();
+    }
+  }
+
+  // Close autocomplete when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) closeAC();
+  });
+
+  // ── INIT ─────────────────────────────────────────────────────────────────────
+  loadDashboard();
+  loadMaterialFields().then(applyPendingMapPin);
+
+  // Auto-switch to order view when returning from map picker
+  if (localStorage.getItem('returnToOrder')) {
+    localStorage.removeItem('returnToOrder');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('view-order').classList.add('active');
+    document.getElementById('navOrder').classList.add('active');
+    document.getElementById('pageTitle').textContent = i18n.en.pageTitle_order;
+    document.getElementById('pageSub').textContent   = i18n.en.pageSub_order;
+  }
+</script>
+</body>
+</html>
