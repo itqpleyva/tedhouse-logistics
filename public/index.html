@@ -1307,25 +1307,47 @@
     doc.text('Houses — Warehouse Detail', margin, y); y += 6;
 
     houses.forEach(h => {
-      checkPage(40);
+      checkPage(50);
 
       // House header
       doc.setFillColor(33, 37, 58);
       doc.rect(margin, y, colW, 9, 'F');
       doc.setTextColor(226, 232, 240); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.text(`🏠 ${h.name}`, margin + 3, y + 6);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(122, 133, 163);
-      doc.text(`📍 ${h.location}`, margin + 3, y + 12 > y + 9 ? y + 6 : y + 6);
+      doc.text(h.name, margin + 3, y + 6);
       doc.setTextColor(62, 207, 110); doc.setFont('helvetica', 'bold');
       doc.text(euro(h.totalValue), W - margin - 3, y + 6, { align: 'right' });
       y += 9;
 
-      // Location sub-line
+      // Properties sub-line (location + id)
       doc.setFillColor(46, 50, 80);
       doc.rect(margin, y, colW, 6, 'F');
       doc.setTextColor(122, 133, 163); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
-      doc.text(`📍 ${h.location}   #${h.id}`, margin + 3, y + 4.3);
+      doc.text(`Location: ${h.location}   #${h.id}`, margin + 3, y + 4.3);
       y += 6;
+
+      // Start date + current phase row
+      const hasProps = h.start_date || h.current_phase || h.lat;
+      if (hasProps) {
+        doc.setFillColor(40, 44, 70);
+        doc.rect(margin, y, colW, 6, 'F');
+        doc.setFontSize(7.5);
+        const parts = [];
+        if (h.start_date) parts.push(`Start: ${h.start_date}`);
+        if (h.current_phase) parts.push(`Phase: ${h.current_phase}`);
+        if (h.lat && h.lng) parts.push(`Coords: ${parseFloat(h.lat).toFixed(5)}, ${parseFloat(h.lng).toFixed(5)}`);
+        doc.setTextColor(167, 139, 250);
+        doc.text(parts.join('   |   '), margin + 3, y + 4.3);
+        y += 6;
+      }
+
+      // Material rows header
+      doc.setFillColor(55, 60, 90);
+      doc.rect(margin, y, colW, 5.5, 'F');
+      doc.setTextColor(150, 160, 200); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+      doc.text('Material', margin + 3, y + 3.8);
+      doc.text('Qty', margin + 90, y + 3.8, { align: 'right' });
+      doc.text('Value', W - margin - 3, y + 3.8, { align: 'right' });
+      y += 5.5;
 
       // Material rows
       h.materials.forEach((m, i) => {
