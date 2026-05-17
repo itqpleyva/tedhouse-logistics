@@ -64,7 +64,7 @@ CREATE TABLE `house` (
 
 LOCK TABLES `house` WRITE;
 /*!40000 ALTER TABLE `house` DISABLE KEYS */;
-INSERT INTO `house` VALUES (1,'House Sofia Centro','Sofia, Bulgaria',42.697700,23.321900,NULL,NULL),(2,'House Plovdiv','Plovdiv, Bulgaria',42.150000,24.750000,NULL,NULL),(3,'House Varna Mar','Varna, Bulgaria',43.214100,27.914700,NULL,NULL),(4,'House Burgas','Burgas, Bulgaria',42.495800,27.472600,NULL,NULL),(6,'House Stara Zagora','Stara Zagora, Bulgaria',42.425800,25.634500,NULL,NULL),(7,'House Pleven','Pleven, Bulgaria',43.416800,24.606900,NULL,NULL),(8,'House Sliven','Sliven, Bulgaria',42.683300,26.316700,NULL,NULL),(9,'House Dobrich','Dobrich, Bulgaria',43.566700,27.833300,NULL,NULL),(10,'House Shumen','Shumen, Bulgaria',43.270600,26.922100,NULL,NULL),(17,'House test','Sofia',42.558897,23.392296,NULL,NULL);
+INSERT INTO `house` VALUES (1,'House Sofia Centro','Sofia, Bulgaria',42.697700,23.321900,'2026-01-10','Framing'),(2,'House Plovdiv','Plovdiv, Bulgaria',42.150000,24.750000,'2026-05-05','Electrical'),(3,'House Varna Mar','Varna, Bulgaria',43.214100,27.914700,'2026-02-14','Roofing'),(4,'House Burgas','Burgas, Bulgaria',42.495800,27.472600,'2026-03-03','Plumbing'),(6,'House Stara Zagora','Stara Zagora, Bulgaria',42.425800,25.634500,'2026-04-28','Foundation'),(7,'House Pleven','Pleven, Bulgaria',43.416800,24.606900,'2026-01-20','Drywall'),(8,'House Sliven','Sliven, Bulgaria',42.683300,26.316700,'2026-03-17','Insulation'),(9,'House Dobrich','Dobrich, Bulgaria',43.566700,27.833300,'2026-02-28','Framing'),(10,'House Shumen','Shumen, Bulgaria',43.270600,26.922100,'2026-04-05','Roofing'),(17,'House test','Sofia',42.558897,23.392296,'2026-05-01','Foundation');
 /*!40000 ALTER TABLE `house` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -186,4 +186,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-17 23:20:24
+-- Dump completed on 2026-05-17 23:38:01
