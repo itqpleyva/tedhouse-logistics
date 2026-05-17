@@ -53,7 +53,7 @@ CREATE TABLE `house` (
   `lat` decimal(9,6) DEFAULT NULL,
   `lng` decimal(9,6) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -62,7 +62,7 @@ CREATE TABLE `house` (
 
 LOCK TABLES `house` WRITE;
 /*!40000 ALTER TABLE `house` DISABLE KEYS */;
-INSERT INTO `house` VALUES (1,'House Sofia Centro','Sofia, Bulgaria',42.697700,23.321900),(2,'House Plovdiv','Plovdiv, Bulgaria',42.150000,24.750000),(3,'House Varna Mar','Varna, Bulgaria',43.214100,27.914700),(4,'House Burgas','Burgas, Bulgaria',42.495800,27.472600),(6,'House Stara Zagora','Stara Zagora, Bulgaria',42.425800,25.634500),(7,'House Pleven','Pleven, Bulgaria',43.416800,24.606900),(8,'House Sliven','Sliven, Bulgaria',42.683300,26.316700),(9,'House Dobrich','Dobrich, Bulgaria',43.566700,27.833300),(10,'House Shumen','Shumen, Bulgaria',43.270600,26.922100);
+INSERT INTO `house` VALUES (1,'House Sofia Centro','Sofia, Bulgaria',42.697700,23.321900),(2,'House Plovdiv','Plovdiv, Bulgaria',42.150000,24.750000),(3,'House Varna Mar','Varna, Bulgaria',43.214100,27.914700),(4,'House Burgas','Burgas, Bulgaria',42.495800,27.472600),(6,'House Stara Zagora','Stara Zagora, Bulgaria',42.425800,25.634500),(7,'House Pleven','Pleven, Bulgaria',43.416800,24.606900),(8,'House Sliven','Sliven, Bulgaria',42.683300,26.316700),(9,'House Dobrich','Dobrich, Bulgaria',43.566700,27.833300),(10,'House Shumen','Shumen, Bulgaria',43.270600,26.922100),(17,'House test','Sofia',42.558897,23.392296);
 /*!40000 ALTER TABLE `house` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -83,7 +83,7 @@ CREATE TABLE `inventory` (
   KEY `fk_inv_material` (`material_id`),
   CONSTRAINT `fk_inv_material` FOREIGN KEY (`material_id`) REFERENCES `material` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inv_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouse` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -92,7 +92,7 @@ CREATE TABLE `inventory` (
 
 LOCK TABLES `inventory` WRITE;
 /*!40000 ALTER TABLE `inventory` DISABLE KEYS */;
-INSERT INTO `inventory` VALUES (1,1,1,120.00),(2,1,2,500.00),(3,1,3,30.00),(4,1,4,200.00),(5,2,1,85.00),(6,2,2,320.00),(7,2,3,15.00),(8,2,4,150.00),(9,3,1,200.00),(10,3,2,800.00),(11,3,3,50.00),(12,3,4,400.00),(13,4,1,60.00),(14,4,2,150.00),(15,4,3,10.00),(16,4,4,80.00),(21,6,1,45.00),(22,6,2,200.00),(23,6,3,25.00),(24,6,4,100.00),(25,7,1,175.00),(26,7,2,450.00),(27,7,3,40.00),(28,7,4,320.00),(29,8,1,90.00),(30,8,2,370.00),(31,8,3,20.00),(32,8,4,130.00),(33,9,1,250.00),(34,9,2,700.00),(35,9,3,60.00),(36,9,4,290.00),(37,10,1,130.00),(38,10,2,480.00),(39,10,3,35.00),(40,10,4,210.00);
+INSERT INTO `inventory` VALUES (1,1,1,120.00),(2,1,2,500.00),(3,1,3,30.00),(4,1,4,200.00),(5,2,1,0.00),(6,2,2,320.00),(7,2,3,15.00),(8,2,4,150.00),(9,3,1,200.00),(10,3,2,800.00),(11,3,3,50.00),(12,3,4,400.00),(13,4,1,60.00),(14,4,2,150.00),(15,4,3,10.00),(16,4,4,80.00),(21,6,1,45.00),(22,6,2,200.00),(23,6,3,25.00),(24,6,4,100.00),(25,7,1,175.00),(26,7,2,450.00),(27,7,3,40.00),(28,7,4,320.00),(29,8,1,90.00),(30,8,2,370.00),(31,8,3,20.00),(32,8,4,130.00),(33,9,1,250.00),(34,9,2,700.00),(35,9,3,60.00),(36,9,4,290.00),(37,10,1,130.00),(38,10,2,480.00),(39,10,3,35.00),(40,10,4,210.00),(41,17,1,0.00),(42,17,2,0.00),(43,17,3,0.00),(44,17,4,0.00);
 /*!40000 ALTER TABLE `inventory` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -118,7 +118,7 @@ CREATE TABLE `material` (
 
 LOCK TABLES `material` WRITE;
 /*!40000 ALTER TABLE `material` DISABLE KEYS */;
-INSERT INTO `material` VALUES (1,'Wood','m²',28.50),(2,'Screws','unidades',0.15),(3,'Boards','unidades',12.00),(4,'Tiles','unidades',3.80);
+INSERT INTO `material` VALUES (1,'Lumber','m²',28.50),(2,'Screws','unidades',0.15),(3,'Boards','unidades',12.00),(4,'Tiles','unidades',3.80);
 /*!40000 ALTER TABLE `material` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -162,7 +162,7 @@ CREATE TABLE `warehouse` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `house_id` (`house_id`),
   CONSTRAINT `fk_warehouse_house` FOREIGN KEY (`house_id`) REFERENCES `house` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -171,7 +171,7 @@ CREATE TABLE `warehouse` (
 
 LOCK TABLES `warehouse` WRITE;
 /*!40000 ALTER TABLE `warehouse` DISABLE KEYS */;
-INSERT INTO `warehouse` VALUES (1,1),(2,2),(3,3),(4,4),(6,6),(7,7),(8,8),(9,9),(10,10);
+INSERT INTO `warehouse` VALUES (1,1),(2,2),(3,3),(4,4),(6,6),(7,7),(8,8),(9,9),(10,10),(17,17);
 /*!40000 ALTER TABLE `warehouse` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -184,4 +184,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-17 22:43:24
+-- Dump completed on 2026-05-17 23:15:37
