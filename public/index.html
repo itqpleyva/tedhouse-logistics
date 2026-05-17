@@ -418,12 +418,20 @@
         <input id="mLng" type="number" step="any" placeholder="Longitude" />
       </div>
     </div>
-    <button id="mLocBtn" onclick="fillModalCoords()" style="
-      width:100%;padding:0.55rem;background:var(--card);border:1px solid var(--border);
-      border-radius:8px;color:var(--muted);font-size:0.82rem;cursor:pointer;
-      transition:border-color 0.2s,color 0.2s;margin-top:-0.25rem">
-      📍 Use my current location
-    </button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:-0.25rem">
+      <button id="mLocBtn" onclick="fillModalCoords()" style="
+        padding:0.55rem;background:var(--card);border:1px solid var(--border);
+        border-radius:8px;color:var(--muted);font-size:0.82rem;cursor:pointer;
+        transition:border-color 0.2s,color 0.2s">
+        📍 Use my location
+      </button>
+      <button onclick="pickMapForHouse()" style="
+        padding:0.55rem;background:var(--card);border:1px solid var(--border);
+        border-radius:8px;color:var(--muted);font-size:0.82rem;cursor:pointer;
+        transition:border-color 0.2s,color 0.2s">
+        🗺 Pick on map
+      </button>
+    </div>
     <p class="modal-err" id="modalErr"></p>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeHouseModal()">Cancel</button>
@@ -1117,6 +1125,18 @@
     }
   }
 
+  function pickMapForHouse() {
+    localStorage.setItem('pendingHouseForm', JSON.stringify({
+      id:       _editingHouseId,
+      name:     document.getElementById('mName').value,
+      location: document.getElementById('mLocation').value,
+      lat:      document.getElementById('mLat').value,
+      lng:      document.getElementById('mLng').value,
+    }));
+    localStorage.setItem('returnToHouseModal', '1');
+    window.location.href = '/map-picker.html';
+  }
+
   function fillModalCoords() {
     const btn = document.getElementById('mLocBtn');
     if (!navigator.geolocation) return;
@@ -1413,6 +1433,26 @@
   // ── INIT ─────────────────────────────────────────────────────────────────────
   loadDashboard();
   loadMaterialFields().then(applyPendingMapPin);
+
+  // Returning from map picker for house modal
+  if (localStorage.getItem('returnToHouseModal')) {
+    localStorage.removeItem('returnToHouseModal');
+    const pin     = JSON.parse(localStorage.getItem('mapPin') || 'null');
+    const pending = JSON.parse(localStorage.getItem('pendingHouseForm') || '{}');
+    localStorage.removeItem('mapPin');
+    localStorage.removeItem('pendingHouseForm');
+    _editingHouseId = pending.id || null;
+    document.getElementById('modalTitle').textContent = pending.id ? `Edit — ${pending.name}` : 'Add house';
+    document.getElementById('mName').value     = pending.name     || '';
+    document.getElementById('mLocation').value = pending.location || '';
+    document.getElementById('mLat').value      = pin ? pin.lat.toFixed(6) : (pending.lat || '');
+    document.getElementById('mLng').value      = pin ? pin.lng.toFixed(6) : (pending.lng || '');
+    document.getElementById('modalErr').textContent = '';
+    document.getElementById('mLocBtn').textContent   = '📍 Use my location';
+    document.getElementById('mLocBtn').style.color   = '';
+    document.getElementById('mLocBtn').style.borderColor = '';
+    document.getElementById('houseModal').classList.add('open');
+  }
 
   // Auto-switch to order view when returning from map picker
   if (localStorage.getItem('returnToOrder')) {
