@@ -1,9 +1,19 @@
 const express = require('express');
 const mysql   = require('mysql2/promise');
 const path    = require('path');
+const session = require('express-session');
+const bcrypt  = require('bcryptjs');
 
 const app = express();
 app.use(express.json());
+
+app.use(session({
+  secret: 'tedhouse-secret-2026',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 8 * 60 * 60 * 1000 }, // 8 hours
+}));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = mysql.createPool({
@@ -14,8 +24,43 @@ const pool = mysql.createPool({
   database: 'teodor-logistica',
 });
 
+// ── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
+const requireAuth = (req, res, next) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.session.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  next();
+};
+
+// ── AUTH ROUTES ──────────────────────────────────────────────────────────────
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
+  try {
+    const [[user]] = await pool.query('SELECT * FROM users WHERE username = ?', [username.trim()]);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) return res.status(401).json({ error: 'Invalid credentials.' });
+    req.session.user = { id: user.id, username: user.username, role: user.role };
+    res.json({ username: user.username, role: user.role });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+
+app.get('/api/me', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+  res.json(req.session.user);
+});
+
 // ── GET /api/houses ──────────────────────────────────────────────────────────
-app.get('/api/houses', async (req, res) => {
+app.get('/api/houses', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT h.id, h.name AS house_name, h.location, h.lat, h.lng,
@@ -54,7 +99,7 @@ app.get('/api/houses', async (req, res) => {
 });
 
 // ── GET /api/totals ──────────────────────────────────────────────────────────
-app.get('/api/totals', async (req, res) => {
+app.get('/api/totals', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT m.name, m.unit, m.price,
@@ -68,7 +113,7 @@ app.get('/api/totals', async (req, res) => {
 });
 
 // ── POST /api/houses ─────────────────────────────────────────────────────────
-app.post('/api/houses', async (req, res) => {
+app.post('/api/houses', requireAdmin, async (req, res) => {
   const { name, location, lat, lng, start_date, current_phase } = req.body;
   if (!name || !location) return res.status(400).json({ error: 'Name and location are required.' });
   let conn;
@@ -92,7 +137,7 @@ app.post('/api/houses', async (req, res) => {
 });
 
 // ── PUT /api/houses/:id ───────────────────────────────────────────────────────
-app.put('/api/houses/:id', async (req, res) => {
+app.put('/api/houses/:id', requireAdmin, async (req, res) => {
   const { name, location, lat, lng, start_date, current_phase } = req.body;
   if (!name || !location) return res.status(400).json({ error: 'Name and location are required.' });
   try {
@@ -105,7 +150,7 @@ app.put('/api/houses/:id', async (req, res) => {
 });
 
 // ── DELETE /api/houses/:id ────────────────────────────────────────────────────
-app.delete('/api/houses/:id', async (req, res) => {
+app.delete('/api/houses/:id', requireAdmin, async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
@@ -125,7 +170,7 @@ app.delete('/api/houses/:id', async (req, res) => {
 });
 
 // ── GET /api/materials ───────────────────────────────────────────────────────
-app.get('/api/materials', async (req, res) => {
+app.get('/api/materials', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM material ORDER BY id');
     res.json(rows);
@@ -133,8 +178,7 @@ app.get('/api/materials', async (req, res) => {
 });
 
 // ── PUT /api/houses/:id/inventory ────────────────────────────────────────────
-// Body: { "1": 120, "2": 500 }  (materialId: newQuantity)
-app.put('/api/houses/:id/inventory', async (req, res) => {
+app.put('/api/houses/:id/inventory', requireAdmin, async (req, res) => {
   const quantities = req.body;
   let conn;
   try {
@@ -185,8 +229,7 @@ const serverMsgs = {
 };
 
 // ── POST /api/calculate-order ────────────────────────────────────────────────
-// Body: { startLat, startLng, startName, destinationHouseId, materials: { "1": 100 }, lang: "en" }
-app.post('/api/calculate-order', async (req, res) => {
+app.post('/api/calculate-order', requireAuth, async (req, res) => {
   try {
     const { startLat, startLng, startName, destinationHouseId, materials: orderInput, lang = 'en' } = req.body;
     const m = serverMsgs[lang] || serverMsgs.en;
@@ -202,7 +245,6 @@ app.post('/api/calculate-order', async (req, res) => {
       lat: parseFloat(startLat), lng: parseFloat(startLng),
     };
 
-    // Look up destination house
     const [[destRow]] = await pool.query('SELECT * FROM house WHERE id = ?', [destinationHouseId]);
     if (!destRow) return res.status(400).json({ error: m.houseNotFound });
     const destNode = {
@@ -210,7 +252,6 @@ app.post('/api/calculate-order', async (req, res) => {
       lat: parseFloat(destRow.lat), lng: parseFloat(destRow.lng),
     };
 
-    // Exclude destination house from pickup stops
     const [rows] = await pool.query(`
       SELECT h.id, h.name, h.location, h.lat, h.lng,
              m.id AS mat_id, m.name AS mat_name, m.unit, i.quantity
@@ -222,7 +263,6 @@ app.post('/api/calculate-order', async (req, res) => {
       ORDER BY h.id, m.id
     `, [destinationHouseId]);
 
-    // Build houses map
     const housesMap = {};
     for (const row of rows) {
       if (!housesMap[row.id]) {
@@ -238,7 +278,6 @@ app.post('/api/calculate-order', async (req, res) => {
     }
     const allHouses = Object.values(housesMap);
 
-    // Parse order
     const needed = {};
     for (const [matId, qty] of Object.entries(orderInput)) {
       const n = parseFloat(qty);
@@ -248,9 +287,6 @@ app.post('/api/calculate-order', async (req, res) => {
       return res.status(400).json({ error: m.noValidQty });
     }
 
-    // ── 1. DISTANCE-AWARE ALLOCATION ─────────────────────────────────────────
-    // Score each house by stock-per-km from origin — prefer close houses with high stock.
-    // Ties broken by proximity (closer always wins when stock is equal).
     const contributions = {};
     const deficit = {};
 
@@ -263,7 +299,6 @@ app.post('/api/calculate-order', async (req, res) => {
         .sort((a, b) => {
           const distA = Math.max(haversine(originNode.lat, originNode.lng, a.lat, a.lng), 0.1);
           const distB = Math.max(haversine(originNode.lat, originNode.lng, b.lat, b.lng), 0.1);
-          // Score: units available per km — higher is better
           const scoreA = a.inventory[mid].quantity / distA;
           const scoreB = b.inventory[mid].quantity / distB;
           return scoreB - scoreA;
@@ -289,18 +324,13 @@ app.post('/api/calculate-order', async (req, res) => {
     }
 
     const selectedHouses = allHouses.filter(h => contributions[h.id]);
-
-    // ── 2. NEAREST-NEIGHBOR + 2-OPT ─────────────────────────────────────────
     const nnRoute  = nearestNeighborFrom(originNode, selectedHouses);
     const route    = twoOpt(nnRoute, originNode);
 
-    // Build full waypoints: origin → pickup stops → destination
     const originInRoute = route.find(h => h.id === originNode.id);
     const pickupWaypoints = originInRoute ? route : [originNode, ...route];
     const allWaypoints    = [...pickupWaypoints, destNode];
 
-    // ── 3. NEAREST SUPPLIER when deficit exists ──────────────────────────────
-    // Insert supplier between last pickup and destination
     let nearestSupplier = null;
     if (Object.keys(deficit).length > 0) {
       const [suppliers] = await pool.query(
@@ -321,7 +351,6 @@ app.post('/api/calculate-order', async (req, res) => {
       }
     }
 
-    // Build Google Maps URL: origin → pickups → [supplier] → destination
     const waypointsForMap = nearestSupplier
       ? [...pickupWaypoints, nearestSupplier, destNode]
       : allWaypoints;
@@ -382,11 +411,8 @@ function nearestNeighborFrom(origin, stops) {
   return route;
 }
 
-// 2-opt improvement for open path with fixed first stop (index 0)
 function twoOpt(route, origin) {
   if (route.length <= 2) return route;
-
-  // Full path includes origin as position 0 even if not in route array
   const fullPath = route[0]?.id === origin.id ? route : [origin, ...route];
   if (fullPath.length <= 3) return route;
 
@@ -395,7 +421,6 @@ function twoOpt(route, origin) {
 
   while (improved) {
     improved = false;
-    // i starts at 1 to keep origin fixed at position 0
     for (let i = 1; i < best.length - 1; i++) {
       for (let j = i + 1; j < best.length; j++) {
         const before = haversine(best[i - 1].lat, best[i - 1].lng, best[i].lat, best[i].lng)
@@ -418,7 +443,6 @@ function twoOpt(route, origin) {
     }
   }
 
-  // Return without origin if it wasn't in the original route
   return route[0]?.id === origin.id ? best : best.slice(1);
 }
 
