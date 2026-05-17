@@ -380,6 +380,22 @@
 <div class="nav-overlay" id="navOverlay" onclick="closeNav()"></div>
 
 
+<!-- INVENTORY MODAL -->
+<div class="modal-backdrop" id="inventoryModal" onclick="if(event.target===this) closeInventoryModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">
+      <span id="invModalTitle">Update Stock</span>
+      <button class="modal-close" onclick="closeInventoryModal()">✕</button>
+    </div>
+    <div id="invFields"></div>
+    <p class="modal-err" id="invModalErr"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeInventoryModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveInventory()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- HOUSE MODAL -->
 <div class="modal-backdrop" id="houseModal" onclick="if(event.target===this) closeHouseModal()">
   <div class="modal" onclick="event.stopPropagation()">
@@ -750,6 +766,7 @@
             <span class="house-id">#${h.id}</span>
             <div class="card-actions" onclick="event.stopPropagation()">
               <button class="card-btn card-btn-edit" title="Edit" onclick="openHouseModal(${h.id})">✏</button>
+              <button class="card-btn" title="Update stock" style="background:rgba(62,207,110,0.15);color:var(--green)" onclick="openInventoryModal(${h.id})">📦</button>
               <button class="card-btn card-btn-del"  title="Delete" onclick="askDelete(this,${h.id},'${h.name.replace(/'/g,"\\'")}')">🗑</button>
             </div>
           </div>
@@ -1340,6 +1357,58 @@
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-wrap')) closeAC();
   });
+
+  // ── INVENTORY CRUD ───────────────────────────────────────────────────────────
+  let _invHouseId = null;
+
+  function openInventoryModal(houseId) {
+    _invHouseId = houseId;
+    const house = dashHouses.find(h => h.id === houseId);
+    document.getElementById('invModalTitle').textContent = `📦 Update Stock — ${house?.name || ''}`;
+    document.getElementById('invModalErr').textContent = '';
+
+    const currentQty = {};
+    (house?.materials || []).forEach(m => { currentQty[m.name] = m.quantity; });
+
+    document.getElementById('invFields').innerHTML = materials.map(m => {
+      const meta = MAT_META[m.name] || { icon: '📦' };
+      const qty  = currentQty[m.name] ?? 0;
+      return `<div class="modal-field">
+        <label>${meta.icon} ${mn(m.name)} <span style="font-weight:400;color:var(--muted)">(${mu(m.unit)})</span></label>
+        <input id="inv_${m.id}" type="number" min="0" step="1" value="${qty}" />
+      </div>`;
+    }).join('');
+
+    document.getElementById('inventoryModal').classList.add('open');
+    document.getElementById(`inv_${materials[0]?.id}`)?.focus();
+  }
+
+  function closeInventoryModal() {
+    document.getElementById('inventoryModal').classList.remove('open');
+    _invHouseId = null;
+  }
+
+  async function saveInventory() {
+    const errEl = document.getElementById('invModalErr');
+    errEl.textContent = '';
+    const body = {};
+    for (const m of materials) {
+      const val = parseFloat(document.getElementById(`inv_${m.id}`)?.value) || 0;
+      body[m.id] = val;
+    }
+    try {
+      const res  = await fetch(`/api/houses/${_invHouseId}/inventory`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      closeInventoryModal();
+      loadDashboard();
+    } catch (e) {
+      errEl.textContent = e.message;
+    }
+  }
 
   // ── INIT ─────────────────────────────────────────────────────────────────────
   loadDashboard();

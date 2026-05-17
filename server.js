@@ -129,6 +129,42 @@ app.get('/api/materials', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── PUT /api/houses/:id/inventory ────────────────────────────────────────────
+// Body: { "1": 120, "2": 500 }  (materialId: newQuantity)
+app.put('/api/houses/:id/inventory', async (req, res) => {
+  const quantities = req.body;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+    const [[wh]] = await conn.query('SELECT id FROM warehouse WHERE house_id = ?', [req.params.id]);
+    if (!wh) return res.status(404).json({ error: 'House not found' });
+    for (const [matId, qty] of Object.entries(quantities)) {
+      const q = parseFloat(qty);
+      if (isNaN(q) || q < 0) continue;
+      const [[existing]] = await conn.query(
+        'SELECT id FROM inventory WHERE warehouse_id = ? AND material_id = ?',
+        [wh.id, parseInt(matId)]
+      );
+      if (existing) {
+        await conn.query('UPDATE inventory SET quantity = ? WHERE id = ?', [q, existing.id]);
+      } else {
+        await conn.query(
+          'INSERT INTO inventory (warehouse_id, material_id, quantity) VALUES (?, ?, ?)',
+          [wh.id, parseInt(matId), q]
+        );
+      }
+    }
+    await conn.commit();
+    res.json({ ok: true });
+  } catch (err) {
+    if (conn) await conn.rollback().catch(() => {});
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 // ── server-side i18n for error messages ─────────────────────────────────────
 const serverMsgs = {
   en: {
