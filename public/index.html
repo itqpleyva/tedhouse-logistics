@@ -789,19 +789,16 @@
             </div>
           </div>
         </div>
-        ${(h.start_date || h.current_phase) ? `
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.9rem">
-          ${h.start_date ? `
           <div style="display:flex;align-items:center;gap:0.4rem;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:7px;padding:0.3rem 0.65rem">
             <span style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Start</span>
-            <span style="font-size:0.82rem;color:var(--text);font-weight:600">📅 ${h.start_date}</span>
-          </div>` : ''}
-          ${h.current_phase ? `
+            <span style="font-size:0.82rem;color:${h.start_date ? 'var(--text)' : 'var(--muted)'};font-weight:600">📅 ${h.start_date || '—'}</span>
+          </div>
           <div style="display:flex;align-items:center;gap:0.4rem;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);border-radius:7px;padding:0.3rem 0.65rem">
             <span style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Phase</span>
-            <span style="font-size:0.82rem;color:var(--purple);font-weight:600">🔧 ${h.current_phase}</span>
-          </div>` : ''}
-        </div>` : ''}
+            <span style="font-size:0.82rem;color:${h.current_phase ? 'var(--purple)' : 'var(--muted)'};font-weight:600">${h.current_phase ? '🔧 ' + h.current_phase : '—'}</span>
+          </div>
+        </div>
         <div class="del-confirm" id="del-${h.id}">
           <span>Delete <strong>${h.name}</strong>?</span>
           <button class="btn btn-ghost" style="padding:0.25rem 0.65rem;font-size:0.76rem" onclick="cancelDelete(${h.id})">No</button>
