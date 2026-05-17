@@ -52,6 +52,8 @@ CREATE TABLE `house` (
   `location` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `lat` decimal(9,6) DEFAULT NULL,
   `lng` decimal(9,6) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `current_phase` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -62,7 +64,7 @@ CREATE TABLE `house` (
 
 LOCK TABLES `house` WRITE;
 /*!40000 ALTER TABLE `house` DISABLE KEYS */;
-INSERT INTO `house` VALUES (1,'House Sofia Centro','Sofia, Bulgaria',42.697700,23.321900),(2,'House Plovdiv','Plovdiv, Bulgaria',42.150000,24.750000),(3,'House Varna Mar','Varna, Bulgaria',43.214100,27.914700),(4,'House Burgas','Burgas, Bulgaria',42.495800,27.472600),(6,'House Stara Zagora','Stara Zagora, Bulgaria',42.425800,25.634500),(7,'House Pleven','Pleven, Bulgaria',43.416800,24.606900),(8,'House Sliven','Sliven, Bulgaria',42.683300,26.316700),(9,'House Dobrich','Dobrich, Bulgaria',43.566700,27.833300),(10,'House Shumen','Shumen, Bulgaria',43.270600,26.922100),(17,'House test','Sofia',42.558897,23.392296);
+INSERT INTO `house` VALUES (1,'House Sofia Centro','Sofia, Bulgaria',42.697700,23.321900,NULL,NULL),(2,'House Plovdiv','Plovdiv, Bulgaria',42.150000,24.750000,NULL,NULL),(3,'House Varna Mar','Varna, Bulgaria',43.214100,27.914700,NULL,NULL),(4,'House Burgas','Burgas, Bulgaria',42.495800,27.472600,NULL,NULL),(6,'House Stara Zagora','Stara Zagora, Bulgaria',42.425800,25.634500,NULL,NULL),(7,'House Pleven','Pleven, Bulgaria',43.416800,24.606900,NULL,NULL),(8,'House Sliven','Sliven, Bulgaria',42.683300,26.316700,NULL,NULL),(9,'House Dobrich','Dobrich, Bulgaria',43.566700,27.833300,NULL,NULL),(10,'House Shumen','Shumen, Bulgaria',43.270600,26.922100,NULL,NULL),(17,'House test','Sofia',42.558897,23.392296,NULL,NULL);
 /*!40000 ALTER TABLE `house` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -184,4 +186,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-17 23:15:37
+-- Dump completed on 2026-05-17 23:20:24

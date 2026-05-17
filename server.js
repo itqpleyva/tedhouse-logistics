@@ -19,6 +19,7 @@ app.get('/api/houses', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT h.id, h.name AS house_name, h.location, h.lat, h.lng,
+             h.start_date, h.current_phase,
              m.name AS material, m.unit, m.price, i.quantity,
              (i.quantity * m.price) AS subtotal
       FROM house h
@@ -33,6 +34,8 @@ app.get('/api/houses', async (req, res) => {
         houses[row.id] = { id: row.id, name: row.house_name, location: row.location,
           lat: row.lat != null ? parseFloat(row.lat) : null,
           lng: row.lng != null ? parseFloat(row.lng) : null,
+          start_date: row.start_date ? row.start_date.toISOString().slice(0,10) : null,
+          current_phase: row.current_phase || null,
           materials: [], totalValue: 0 };
       }
       if (row.material != null) {
@@ -66,20 +69,20 @@ app.get('/api/totals', async (req, res) => {
 
 // ── POST /api/houses ─────────────────────────────────────────────────────────
 app.post('/api/houses', async (req, res) => {
-  const { name, location, lat, lng } = req.body;
+  const { name, location, lat, lng, start_date, current_phase } = req.body;
   if (!name || !location) return res.status(400).json({ error: 'Name and location are required.' });
   let conn;
   try {
     conn = await pool.getConnection();
     await conn.beginTransaction();
     const [result] = await conn.query(
-      'INSERT INTO house (name, location, lat, lng) VALUES (?, ?, ?, ?)',
-      [name.trim(), location.trim(), lat || null, lng || null]
+      'INSERT INTO house (name, location, lat, lng, start_date, current_phase) VALUES (?, ?, ?, ?, ?, ?)',
+      [name.trim(), location.trim(), lat || null, lng || null, start_date || null, current_phase?.trim() || null]
     );
     const houseId = result.insertId;
     await conn.query('INSERT INTO warehouse (house_id) VALUES (?)', [houseId]);
     await conn.commit();
-    res.json({ id: houseId, name, location, lat, lng });
+    res.json({ id: houseId, name, location, lat, lng, start_date, current_phase });
   } catch (err) {
     if (conn) await conn.rollback().catch(() => {});
     res.status(500).json({ error: err.message });
@@ -90,12 +93,12 @@ app.post('/api/houses', async (req, res) => {
 
 // ── PUT /api/houses/:id ───────────────────────────────────────────────────────
 app.put('/api/houses/:id', async (req, res) => {
-  const { name, location, lat, lng } = req.body;
+  const { name, location, lat, lng, start_date, current_phase } = req.body;
   if (!name || !location) return res.status(400).json({ error: 'Name and location are required.' });
   try {
     await pool.query(
-      'UPDATE house SET name=?, location=?, lat=?, lng=? WHERE id=?',
-      [name.trim(), location.trim(), lat || null, lng || null, req.params.id]
+      'UPDATE house SET name=?, location=?, lat=?, lng=?, start_date=?, current_phase=? WHERE id=?',
+      [name.trim(), location.trim(), lat || null, lng || null, start_date || null, current_phase?.trim() || null, req.params.id]
     );
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

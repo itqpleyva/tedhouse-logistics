@@ -418,6 +418,16 @@
         <input id="mLng" type="number" step="any" placeholder="Longitude" />
       </div>
     </div>
+    <div class="modal-coords" style="gap:0.75rem;display:grid;grid-template-columns:1fr 1fr;margin-bottom:1rem">
+      <div class="modal-field" style="margin-bottom:0">
+        <label>Start date <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input id="mStartDate" type="date" />
+      </div>
+      <div class="modal-field" style="margin-bottom:0">
+        <label>Current phase <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input id="mPhase" type="text" placeholder="e.g. Foundation" />
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:-0.25rem">
       <button id="mLocBtn" onclick="fillModalCoords()" style="
         padding:0.55rem;background:var(--card);border:1px solid var(--border);
@@ -769,6 +779,11 @@
           <div>
             <p class="house-name">${h.name}</p>
             <p class="house-loc">📍 ${h.location}</p>
+            ${h.start_date || h.current_phase ? `<p style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem">
+              ${h.start_date ? `📅 ${h.start_date}` : ''}
+              ${h.start_date && h.current_phase ? ' &nbsp;·&nbsp; ' : ''}
+              ${h.current_phase ? `🔧 ${h.current_phase}` : ''}
+            </p>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:0.4rem">
             <span class="house-id">#${h.id}</span>
@@ -1060,8 +1075,10 @@
     document.getElementById('modalTitle').textContent = house ? `Edit — ${house.name}` : 'Add house';
     document.getElementById('mName').value     = house ? house.name     : '';
     document.getElementById('mLocation').value = house ? house.location : '';
-    document.getElementById('mLat').value      = house?.lat ?? '';
-    document.getElementById('mLng').value      = house?.lng ?? '';
+    document.getElementById('mLat').value       = house?.lat ?? '';
+    document.getElementById('mLng').value       = house?.lng ?? '';
+    document.getElementById('mStartDate').value = house?.start_date ?? '';
+    document.getElementById('mPhase').value     = house?.current_phase ?? '';
     document.getElementById('modalErr').textContent = '';
     document.getElementById('mLocBtn').textContent   = '📍 Use my current location';
     document.getElementById('mLocBtn').style.color   = '';
@@ -1088,7 +1105,9 @@
     }
     errEl.textContent = '';
 
-    const body = { name, location, lat: lat || null, lng: lng || null };
+    const start_date    = document.getElementById('mStartDate').value || null;
+    const current_phase = document.getElementById('mPhase').value.trim() || null;
+    const body = { name, location, lat: lat || null, lng: lng || null, start_date, current_phase };
     const url    = _editingHouseId ? `/api/houses/${_editingHouseId}` : '/api/houses';
     const method = _editingHouseId ? 'PUT' : 'POST';
 
@@ -1132,6 +1151,8 @@
       location: document.getElementById('mLocation').value,
       lat:      document.getElementById('mLat').value,
       lng:      document.getElementById('mLng').value,
+      start_date:    document.getElementById('mStartDate').value,
+      current_phase: document.getElementById('mPhase').value,
     }));
     localStorage.setItem('returnToHouseModal', '1');
     window.location.href = '/map-picker.html';
@@ -1445,8 +1466,10 @@
     document.getElementById('modalTitle').textContent = pending.id ? `Edit — ${pending.name}` : 'Add house';
     document.getElementById('mName').value     = pending.name     || '';
     document.getElementById('mLocation').value = pending.location || '';
-    document.getElementById('mLat').value      = pin ? pin.lat.toFixed(6) : (pending.lat || '');
-    document.getElementById('mLng').value      = pin ? pin.lng.toFixed(6) : (pending.lng || '');
+    document.getElementById('mLat').value       = pin ? pin.lat.toFixed(6) : (pending.lat || '');
+    document.getElementById('mLng').value       = pin ? pin.lng.toFixed(6) : (pending.lng || '');
+    document.getElementById('mStartDate').value = pending.start_date    || '';
+    document.getElementById('mPhase').value     = pending.current_phase || '';
     document.getElementById('modalErr').textContent = '';
     document.getElementById('mLocBtn').textContent   = '📍 Use my location';
     document.getElementById('mLocBtn').style.color   = '';
