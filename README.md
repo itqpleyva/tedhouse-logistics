@@ -61,6 +61,31 @@ Open **http://localhost:3000** in your browser.
 
 ---
 
+## Default Accounts
+
+| Username | Password | Role  |
+|----------|----------|-------|
+| admin    | admin    | Admin |
+| user     | user     | User  |
+
+## Role-Based Access
+
+| Feature                          | Admin | User |
+|----------------------------------|:-----:|:----:|
+| View dashboard & inventory       | ✅    | ✅   |
+| Search houses                    | ✅    | ✅   |
+| Calculate optimal route          | ✅    | ✅   |
+| Export PDF report                | ✅    | ✅   |
+| Language toggle (BG / EN)        | ✅    | ✅   |
+| Add house                        | ✅    | ✗    |
+| Edit house                       | ✅    | ✗    |
+| Delete house                     | ✅    | ✗    |
+| Update stock (inventory)         | ✅    | ✗    |
+
+Permissions are enforced both in the UI (buttons hidden for `user` role) and on the server (mutation endpoints return `403 Forbidden` if called without admin role). Sessions expire after 8 hours.
+
+---
+
 ## Features
 
 - Inventory dashboard with material stock per house
