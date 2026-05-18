@@ -335,44 +335,19 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
     const pickupWaypoints = originInRoute ? route : [originNode, ...route];
     const allWaypoints    = [...pickupWaypoints, destNode];
 
-    let nearestSupplier = null;
-    if (Object.keys(deficit).length > 0) {
-      const [suppliers] = await pool.query(
-        'SELECT * FROM supplier WHERE lat IS NOT NULL AND lng IS NOT NULL'
-      );
-      const lastPickup = pickupWaypoints[pickupWaypoints.length - 1];
-      let minDist = Infinity;
-      for (const s of suppliers) {
-        const d = haversine(lastPickup.lat, lastPickup.lng, parseFloat(s.lat), parseFloat(s.lng));
-        if (d < minDist) {
-          minDist = d;
-          nearestSupplier = {
-            id: s.id, name: s.name, location: s.location,
-            lat: parseFloat(s.lat), lng: parseFloat(s.lng),
-            distanceFromLastStop: Math.round(d),
-          };
-        }
-      }
-    }
-
-    const waypointsForMap = nearestSupplier
-      ? [...pickupWaypoints, nearestSupplier, destNode]
-      : allWaypoints;
-
-    const mapsUrl = waypointsForMap.length >= 2
-      ? `https://www.google.com/maps/dir/${waypointsForMap.map(p => `${p.lat},${p.lng}`).join('/')}`
+    const mapsUrl = allWaypoints.length >= 2
+      ? `https://www.google.com/maps/dir/${allWaypoints.map(p => `${p.lat},${p.lng}`).join('/')}`
       : `https://www.google.com/maps/search/?api=1&query=${originNode.lat},${originNode.lng}`;
 
     res.json({
       origin:      { id: originNode.id, name: originNode.name, location: originNode.location },
       destination: { id: destNode.id,   name: destNode.name,   location: destNode.location },
       route:       route.map(h => ({ ...h, contribution: contributions[h.id] })),
-      supplier:    nearestSupplier,
       deficit:     Object.values(deficit),
       mapsUrl,
       fullyFulfilled: Object.keys(deficit).length === 0,
       totalStops:     route.length,
-      totalDistance:  routeDistance(waypointsForMap),
+      totalDistance:  routeDistance(allWaypoints),
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

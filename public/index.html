@@ -706,13 +706,10 @@
       enterQty:'⚠ Enter at least one material quantity.',
       calculating:'Calculating optimal route...', errLoadData:'Error loading data.',
       orderOk:'✅ Order fully covered by existing surpluses',
-      orderWarn:'⚠️ Insufficient surpluses — missing {deficit} — will be ordered from supplier',
+      orderWarn:'⚠️ Insufficient surpluses — missing {deficit}',
       stops:'stops', estimated:'estimated', openMaps:'↗ Open in Google Maps',
       startingPointLabel:'Starting point', noMaterials:'No materials to contribute',
       pickupRoute:'Pickup route', noHouses:'No houses with available materials.',
-      fromSupplier:'🏭 Materials to order from supplier',
-      supplierStop:'Supplier stop', supplierNote:'Collect missing materials here',
-      kmFromLast:'km from last house',
       Lumber:'Lumber', Screws:'Screws', Boards:'Boards', Tiles:'Tiles',
       unidades:'units', 'm²':'m²',
     },
@@ -739,13 +736,10 @@
       enterQty:'⚠ Въведете поне едно количество.',
       calculating:'Изчисляване на оптимален маршрут...', errLoadData:'Грешка при зареждане.',
       orderOk:'✅ Поръчката е напълно покрита от наличните излишъци',
-      orderWarn:'⚠️ Недостатъчни излишъци — липсва {deficit} — ще бъде поръчано от доставчик',
+      orderWarn:'⚠️ Недостатъчни излишъци — липсва {deficit}',
       stops:'спирки', estimated:'прибл.', openMaps:'↗ Отвори в Google Maps',
       startingPointLabel:'Начална точка', noMaterials:'Няма материали за принос',
       pickupRoute:'Маршрут за събиране', noHouses:'Няма къщи с налични материали.',
-      fromSupplier:'🏭 Материали за поръчка от доставчик',
-      supplierStop:'Спирка при доставчик', supplierNote:'Вземете липсващите материали тук',
-      kmFromLast:'км от последната къща',
       Lumber:'Дървен материал', Screws:'Винтове', Boards:'Дъски', Tiles:'Керемиди',
       unidades:'бр.', 'm²':'m²',
     },
@@ -1166,7 +1160,7 @@
       <div class="result-meta">
         <div class="meta-chip">🚩 <strong>${origin.name}</strong></div>
         <div class="meta-chip">🏁 <strong>${destination.name}</strong></div>
-        <div class="meta-chip">🏠 <strong>${totalStops + (data.supplier ? 1 : 0)}</strong> ${t('stops')}</div>
+        <div class="meta-chip">🏠 <strong>${totalStops}</strong> ${t('stops')}</div>
         <div class="meta-chip">📏 ~<strong>${totalDistance} km</strong> ${t('estimated')}</div>
         <div class="meta-chip">⛽ ~<strong>${euro(fuelCost)}</strong> <span style="font-weight:400">(${fuelLitres.toFixed(1)} L)</span></div>
         ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" class="btn btn-green" style="text-decoration:none;border-radius:8px;padding:0.5rem 0.9rem;font-size:0.8rem">
@@ -1244,26 +1238,6 @@
             <div class="stop-arrow">↓</div>`;
         }).join('')}
         ${route.length === 0 ? '<div class="stop-arrow">↓</div>' : ''}
-        ${data.supplier ? `
-        <div class="stop-card" style="border-color:var(--red);background:rgba(247,111,111,0.06)">
-          <div class="stop-num" style="background:var(--red)">🏭</div>
-          <div class="stop-info">
-            <p class="stop-name">${data.supplier.name}</p>
-            <p class="stop-loc">📍 ${data.supplier.location}
-              &nbsp;·&nbsp; <span style="color:var(--red)">${t('supplierStop')}</span>
-              &nbsp;·&nbsp; <span style="color:var(--muted)">${data.supplier.distanceFromLastStop} ${t('kmFromLast')}</span>
-            </p>
-            <p style="font-size:0.73rem;color:var(--muted);margin-top:0.35rem">${t('supplierNote')}</p>
-            <div class="stop-mats" style="margin-top:0.5rem">
-              ${deficit.map(d => {
-                const meta = MAT_META[d.name] || { icon: '📦' };
-                return `<span class="mat-tag" style="border-color:rgba(247,111,111,0.4);color:var(--red);background:rgba(247,111,111,0.1)">
-                  ${meta.icon} ${mn(d.name)}: ${fmt(d.quantity)} ${mu(d.unit)}
-                </span>`;
-              }).join('')}
-            </div>
-          </div>
-        </div>` : ''}
         ${destCard}
       </div>`;
 
