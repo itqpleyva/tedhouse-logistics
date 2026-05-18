@@ -95,3 +95,50 @@ Permissions are enforced both in the UI (buttons hidden for `user` role) and on 
 - Supplier fallback when stock is insufficient
 - PDF inventory export
 - Bulgarian / English language toggle
+
+---
+
+## Repository Structure
+
+```
+tedhouse-logistics/
+│
+├── server.js                  # Express backend — all API routes, auth middleware,
+│                              #   route optimization algorithm (Nearest Neighbor + 2-opt),
+│                              #   session management (express-session + bcryptjs)
+│
+├── database.sql               # Full MySQL dump — run once to create all tables and
+│                              #   seed initial data (houses, inventory, materials,
+│                              #   suppliers, users)
+│
+├── package.json               # Node.js project metadata and dependency list
+├── package-lock.json          # Exact dependency versions lock file
+│
+├── public/                    # Static files served directly by Express
+│   │
+│   ├── index.html             # Single-page application — the entire frontend lives here:
+│   │                          #   dashboard view, new order view, all modals,
+│   │                          #   login screen, i18n (BG/EN), PDF export, route display
+│   │
+│   ├── map-picker.html        # Standalone Leaflet map page for picking a GPS location.
+│   │                          #   Saves the chosen pin to localStorage and redirects back
+│   │                          #   to index.html (used for driver start and house coords)
+│   │
+│   ├── leaflet.js             # Leaflet mapping library (bundled locally, no CDN needed)
+│   ├── leaflet.css            # Leaflet default styles
+│   ├── marker-icon.png        # Default map pin icon (1x)
+│   ├── marker-icon-2x.png     # Default map pin icon (retina / 2x)
+│   └── marker-shadow.png      # Map pin drop shadow
+```
+
+### Database Tables
+
+| Table       | Purpose                                                      |
+|-------------|--------------------------------------------------------------|
+| `house`     | Construction sites — name, location, GPS coords, start date, current phase |
+| `warehouse` | One warehouse per house, links house to its inventory        |
+| `inventory` | Stock quantities — links warehouse + material + quantity     |
+| `material`  | Material catalogue — name, unit, price per unit              |
+| `supplier`  | Fallback suppliers with GPS coords for deficit orders        |
+| `driver`    | Driver records (reserved for future use)                     |
+| `users`     | Login accounts — username, bcrypt password hash, role        |
