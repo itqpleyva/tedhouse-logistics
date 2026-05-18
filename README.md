@@ -86,6 +86,77 @@ Permissions are enforced both in the UI (buttons hidden for `user` role) and on 
 
 ---
 
+## Route Calculation Algorithm
+
+The route is calculated server-side in `POST /api/calculate-order` using the following steps.
+
+### Step 1 — Collect inputs
+
+The driver provides:
+- **Starting GPS coordinates** (picked on the map)
+- **Destination house** (where materials are needed)
+- **Ordered quantities** per material (e.g. 10 screws, 50 m² of tiles)
+
+### Step 2 — Query candidate houses
+
+The server fetches every house **except the destination** that:
+- has GPS coordinates stored
+- has at least one ordered material in stock (quantity > 0)
+
+These are the *relevant houses* — the pool of potential pickup stops.
+
+### Step 3 — Find the optimal subset of pickup stops
+
+The goal is to find the **smallest total route distance** (origin → pickup stops → destination) while collectively covering the full order.
+
+**When relevant houses ≤ 15 (exhaustive search):**
+
+Every non-empty subset of relevant houses is evaluated:
+
+1. Check whether the subset's combined stock covers all ordered quantities — skip it if not.
+2. For valid subsets, order the stops with **Nearest Neighbor** starting from the driver's origin, then improve the order with **2-opt** (see below).
+3. Compute the total route distance: `origin → ordered stops → destination` using the Haversine formula.
+4. Keep whichever subset produces the shortest total distance.
+
+This guarantees the globally optimal set of stops for ≤ 15 candidates. Going to multiple nearby houses is preferred over going to one distant house if the total trip is shorter.
+
+**When relevant houses > 15 (greedy fallback):**
+
+A per-material greedy score is used:
+
+```
+score = quantity_available / distance_from_origin
+```
+
+Houses are ranked by score (descending) and selected until demand is met, which favours dense nearby stock over sparse distant stock.
+
+### Step 4 — Order the stops (Nearest Neighbor + 2-opt)
+
+Given the chosen set of pickup houses, the visit order is optimised:
+
+1. **Nearest Neighbor** — starting from the driver's origin, repeatedly visit the closest unvisited house until all stops are included.
+2. **2-opt improvement** — swap pairs of edges in the route and keep the swap if it shortens the total distance. Repeat until no improving swap exists.
+
+### Step 5 — Allocate materials to stops
+
+Within the selected set of houses, each material is allocated to the closest house (by distance from origin) that still has remaining stock, taking as much as available until the ordered quantity is met.
+
+If total stock across all relevant houses is less than the ordered quantity, the shortfall is reported as a **deficit** in the results.
+
+### Step 6 — Build the final route
+
+```
+Driver origin → [pickup stop 1] → [pickup stop 2] → … → Destination house
+```
+
+A Google Maps link is generated for the full waypoint sequence. Total distance and estimated fuel cost are shown in the results panel.
+
+### Distance formula
+
+All distances are calculated with the **Haversine formula** on a sphere of radius 6 371 km, giving great-circle distances in kilometres.
+
+---
+
 ## Features
 
 - Inventory dashboard with material stock per house
