@@ -587,7 +587,7 @@
     <div style="display:flex;gap:0.5rem;align-items:center">
       <button class="btn btn-ghost" id="pdfBtn" onclick="downloadPDF()" style="color:var(--green);border-color:var(--green)">⬇ <span class="btn-label">PDF</span></button>
       <button class="btn btn-ghost" id="langBtn" onclick="toggleLang()" style="font-weight:700;letter-spacing:0.05em">🌐 <span class="btn-label">BG</span></button>
-      <button class="btn btn-ghost" id="refreshBtn" onclick="onRefresh()">⟳ <span class="btn-label">Refresh</span></button>
+
       <div class="user-badge" id="userBadge" style="display:none">
         <span id="userBadgeName"></span>
         <span class="role-tag" id="userBadgeRole"></span>
@@ -772,7 +772,7 @@
     document.getElementById('navMap').querySelector('span:last-child').textContent       = t('navMap');
     document.getElementById('pdfBtn').querySelector('.btn-label').textContent     = 'PDF';
     document.getElementById('langBtn').querySelector('.btn-label').textContent     = currentLang === 'en' ? 'BG' : 'EN';
-    document.getElementById('refreshBtn').querySelector('.btn-label').textContent  = currentLang === 'en' ? 'Refresh' : 'Опресни';
+
     document.getElementById('searchInput').placeholder  = t('searchPlaceholder');
     document.getElementById('clearBtn').title           = t('searchClear');
     document.getElementById('sectionLabel').textContent = t('sectionLabel');
