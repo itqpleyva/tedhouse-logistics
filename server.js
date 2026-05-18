@@ -287,25 +287,65 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       return res.status(400).json({ error: m.noValidQty });
     }
 
+    const distOf = h => Math.max(haversine(originNode.lat, originNode.lng, h.lat, h.lng), 0.1);
+
+    // Houses that carry at least one needed material
+    const relevantHouses = allHouses.filter(h =>
+      Object.keys(needed).some(mid => (h.inventory[parseInt(mid)]?.quantity || 0) > 0)
+    );
+
+    // True when the subset can fully supply every ordered material
+    function coversDemand(subset) {
+      for (const [mid, qty] of Object.entries(needed)) {
+        const have = subset.reduce((s, h) => s + (h.inventory[parseInt(mid)]?.quantity || 0), 0);
+        if (have < qty) return false;
+      }
+      return true;
+    }
+
+    let selectedHouses = [];
+    let route = [];
+
+    const N = relevantHouses.length;
+    if (N > 0 && N <= 15) {
+      // Enumerate every non-empty subset; keep the one with the shortest full route
+      let bestDist = Infinity;
+      for (let mask = 1; mask < (1 << N); mask++) {
+        const subset = [];
+        for (let i = 0; i < N; i++) { if (mask & (1 << i)) subset.push(relevantHouses[i]); }
+        if (!coversDemand(subset)) continue;
+        const ord  = twoOpt(nearestNeighborFrom(originNode, subset), originNode);
+        const dist = routeDistance([originNode, ...ord, destNode]);
+        if (dist < bestDist) { bestDist = dist; selectedHouses = subset; route = ord; }
+      }
+    } else if (N > 15) {
+      // Greedy fallback: quantity/distance score
+      const picked = new Set();
+      for (const [matId, qty] of Object.entries(needed)) {
+        let rem = qty;
+        const mid = parseInt(matId);
+        const sorted = allHouses
+          .filter(h => h.inventory[mid]?.quantity > 0)
+          .sort((a, b) => (b.inventory[mid].quantity / distOf(b)) - (a.inventory[mid].quantity / distOf(a)));
+        for (const h of sorted) { if (rem <= 0) break; picked.add(h.id); rem -= h.inventory[mid].quantity; }
+      }
+      selectedHouses = allHouses.filter(h => picked.has(h.id));
+      route = twoOpt(nearestNeighborFrom(originNode, selectedHouses), originNode);
+    }
+
+    // Allocate materials within the selected set (closest house first per material)
     const contributions = {};
     const deficit = {};
+    const selectionReason = selectedHouses.length === 1 ? 'optimal_single' : 'optimal_multi';
 
     for (const [matId, qtyNeeded] of Object.entries(needed)) {
       let rem = qtyNeeded;
       const mid = parseInt(matId);
+      const providers = selectedHouses
+        .filter(h => h.inventory[mid]?.quantity > 0)
+        .sort((a, b) => distOf(a) - distOf(b));
 
-      const candidates = allHouses.filter(h => h.inventory[mid] && h.inventory[mid].quantity > 0);
-      const distOf = h => Math.max(haversine(originNode.lat, originNode.lng, h.lat, h.lng), 0.1);
-
-      // If any single house can satisfy the full remaining demand, prefer the closest one.
-      // Otherwise rank by quantity/distance to minimise stops vs travel.
-      const canSatisfy = candidates.filter(h => h.inventory[mid].quantity >= rem);
-      const selectionReason = canSatisfy.length > 0 ? 'closest_full' : 'best_partial';
-      const sorted = canSatisfy.length > 0
-        ? canSatisfy.sort((a, b) => distOf(a) - distOf(b))
-        : candidates.sort((a, b) => (b.inventory[mid].quantity / distOf(b)) - (a.inventory[mid].quantity / distOf(a)));
-
-      for (const house of sorted) {
+      for (const house of providers) {
         if (rem <= 0) break;
         const avail = house.inventory[mid].quantity;
         const take  = Math.min(avail, rem);
@@ -320,16 +360,11 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
           availableQty: avail,
         };
       }
-
       if (rem > 0) {
         const mat = matRows.find(m => m.id === mid);
         deficit[mid] = { quantity: rem, name: mat.name, unit: mat.unit };
       }
     }
-
-    const selectedHouses = allHouses.filter(h => contributions[h.id]);
-    const nnRoute  = nearestNeighborFrom(originNode, selectedHouses);
-    const route    = twoOpt(nnRoute, originNode);
 
     const originInRoute = route.find(h => h.id === originNode.id);
     const pickupWaypoints = originInRoute ? route : [originNode, ...route];

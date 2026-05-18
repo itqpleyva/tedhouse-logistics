@@ -738,11 +738,9 @@
       // validation / errors
       nameLocationRequired:'Name and location are required.', errorPrefix:'Error:',
       // route reasons
-      algoNote:'Stop order optimised with Nearest Neighbor + 2-opt to minimise total travel distance. Each pickup house was selected as the closest location that can supply the requested quantity, or the best partial source when no single warehouse has enough stock.',
-      reasonNearest:'Nearest warehouse with enough {mats} to fill the full order — {dist} km from origin',
-      reasonPartialAll:'No single warehouse covers full demand — taking {mats} here ({dist} km from origin)',
-      reasonNearestFull:'Nearest full source for {mat}',
-      reasonPartial:'Partial pickup: {qty} {mat} ({available} available)',
+      algoNote:'All pickup stops are chosen as the subset of warehouses that minimises total route distance while covering the full order. Stop order is then optimised with Nearest Neighbor + 2-opt.',
+      reasonOptimalSingle:'Nearest single warehouse covering the full order — {dist} km from origin',
+      reasonOptimalMulti:'Part of the minimum-distance multi-stop route — {dist} km from origin',
       Lumber:'Lumber', Screws:'Screws', Boards:'Boards', Tiles:'Tiles',
       unidades:'units', 'm²':'m²',
     },
@@ -801,11 +799,9 @@
       // validation / errors
       nameLocationRequired:'Необходими са Ime и Locация.', errorPrefix:'Грешка:',
       // route reasons
-      algoNote:'Редът на спирките е оптимизиран с Nearest Neighbor + 2-opt за минимално разстояние. Всяка спирка е избрана като най-близкия склад, покриващ нужното количество, или като най-добрия частичен източник при недостиг.',
-      reasonNearest:'Най-близкият склад с достатъчно {mats} за цялата поръчка — {dist} км от начало',
-      reasonPartialAll:'Нито един склад не покрива цялото търсене — взима {mats} тук ({dist} км от начало)',
-      reasonNearestFull:'Най-близкият пълен източник за {mat}',
-      reasonPartial:'Частично вземане: {qty} {mat} ({available} налични)',
+      algoNote:'Спирките са избрани като комбинацията от складове с най-кратко общо разстояние, покриваща цялата поръчка. Редът е оптимизиран с Nearest Neighbor + 2-opt.',
+      reasonOptimalSingle:'Единственият склад, покриващ цялата поръчка с най-кратко разстояние — {dist} км от начало',
+      reasonOptimalMulti:'Част от маршрута с минимално общо разстояние — {dist} км от начало',
       Lumber:'Дървен материал', Screws:'Винтове', Boards:'Дъски', Tiles:'Керемиди',
       unidades:'бр.', 'm²':'m²',
     },
@@ -1315,23 +1311,10 @@
             `<span class="mat-tag">${MAT_META[c.name]?.icon || '📦'} ${mn(c.name)}: ${fmt(c.quantity)} ${mu(c.unit)}</span>`
           ).join('');
 
-          const allFull    = contribs.every(c => c.selectionReason === 'closest_full');
-          const allPartial = contribs.every(c => c.selectionReason === 'best_partial');
-          const dist       = contribs[0]?.distanceFromOrigin ?? '?';
-          let reasonLine   = '';
-          if (allFull) {
-            const matNames = contribs.map(c => mn(c.name)).join(' & ');
-            reasonLine = t('reasonNearest').replace('{mats}', `<strong>${matNames}</strong>`).replace('{dist}', `<strong>${dist}</strong>`);
-          } else if (allPartial) {
-            const matNames = contribs.map(c => `${fmt(c.quantity)} of ${fmt(c.availableQty)} ${mn(c.name)}`).join(', ');
-            reasonLine = t('reasonPartialAll').replace('{mats}', matNames).replace('{dist}', `<strong>${dist}</strong>`);
-          } else {
-            reasonLine = contribs.map(c => {
-              if (c.selectionReason === 'closest_full')
-                return t('reasonNearestFull').replace('{mat}', `<strong>${mn(c.name)}</strong>`);
-              return t('reasonPartial').replace('{qty}', `<strong>${fmt(c.quantity)}</strong>`).replace('{mat}', mn(c.name)).replace('{available}', fmt(c.availableQty));
-            }).join(' · ');
-          }
+          const dist = contribs[0]?.distanceFromOrigin ?? '?';
+          const reasonKey = contribs[0]?.selectionReason === 'optimal_single'
+            ? 'reasonOptimalSingle' : 'reasonOptimalMulti';
+          const reasonLine = t(reasonKey).replace('{dist}', `<strong>${dist}</strong>`);
 
           return `
             <div class="stop-card">
