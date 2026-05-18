@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TEDHOUSE LOGISTICS</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="/leaflet.css" />
+  <script src="/leaflet.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -118,6 +120,14 @@
     /* ── VIEWS ── */
     .view { display: none; padding: 2rem; }
     .view.active { display: block; }
+    #view-map { padding: 0; }
+    #view-map.active { display: flex; flex-direction: column; height: calc(100vh - 65px); }
+    .house-map-label {
+      background: #1a1d27; color: #e2e8f0; border: 1px solid #2e3250;
+      border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+      padding: 2px 7px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .house-map-label::before { display: none; }
 
     /* ── TOTALS ── */
     .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px,1fr)); gap: 1rem; margin-bottom: 2rem; }
@@ -435,6 +445,11 @@
   </div>
 </div>
 
+  <!-- VIEW: MAP -->
+  <div class="view" id="view-map" style="padding:0;height:calc(100vh - 65px);display:none;flex-direction:column">
+    <div id="housesMap" style="flex:1;width:100%;height:100%"></div>
+  </div>
+
 <!-- HOUSE MODAL -->
 <div class="modal-backdrop" id="houseModal" onclick="if(event.target===this) closeHouseModal()">
   <div class="modal" onclick="event.stopPropagation()">
@@ -531,6 +546,9 @@
     </div>
     <div class="nav-item" id="navOrder" onclick="showView('order')">
       <span class="nav-icon">📦</span> <span>New Order</span>
+    </div>
+    <div class="nav-item" id="navMap" onclick="showView('map')">
+      <span class="nav-icon">🗺</span> <span>Map View</span>
     </div>
   </div>
 </nav>
@@ -643,9 +661,10 @@
   const i18n = {
     en: {
       brandName:'TEDHOUSE LOGISTICS', brandSub:'Materials Management',
-      navDashboard:'Dashboard', navOrder:'New Order',
+      navDashboard:'Dashboard', navOrder:'New Order', navMap:'Map View',
       pageTitle_dashboard:'Dashboard', pageSub_dashboard:'Surplus materials inventory',
       pageTitle_order:'New Order', pageSub_order:'Calculate optimal pickup route',
+      pageTitle_map:'Map View', pageSub_map:'Houses on map',
       refresh:'⟳ Refresh', langBtn:'🌐 BG', pdfBtn:'⬇ PDF',
       searchPlaceholder:'Search house...', searchClear:'Clear',
       sectionLabel:'Houses — warehouse detail',
@@ -675,9 +694,10 @@
     },
     bg: {
       brandName:'Теодор Логистика', brandSub:'Управление на материали',
-      navDashboard:'Табло', navOrder:'Нова поръчка',
+      navDashboard:'Табло', navOrder:'Нова поръчка', navMap:'Карта',
       pageTitle_dashboard:'Табло', pageSub_dashboard:'Инвентар на излишни материали',
       pageTitle_order:'Нова поръчка', pageSub_order:'Изчисли оптимален маршрут',
+      pageTitle_map:'Карта', pageSub_map:'Къщи на картата',
       refresh:'⟳ Опресни', langBtn:'🌐 EN', pdfBtn:'⬇ PDF',
       searchPlaceholder:'Търси къща...', searchClear:'Изчисти',
       sectionLabel:'Къщи — детайли на склад',
@@ -727,6 +747,7 @@
     document.getElementById('brandSub').textContent     = t('brandSub');
     document.getElementById('navDashboard').querySelector('span:last-child').textContent = t('navDashboard');
     document.getElementById('navOrder').querySelector('span:last-child').textContent     = t('navOrder');
+    document.getElementById('navMap').querySelector('span:last-child').textContent       = t('navMap');
     document.getElementById('pdfBtn').querySelector('.btn-label').textContent     = 'PDF';
     document.getElementById('langBtn').querySelector('.btn-label').textContent     = currentLang === 'en' ? 'BG' : 'EN';
     document.getElementById('refreshBtn').querySelector('.btn-label').textContent  = currentLang === 'en' ? 'Refresh' : 'Опресни';
@@ -783,6 +804,61 @@
     document.getElementById('pageTitle').textContent = t(`pageTitle_${name}`);
     document.getElementById('pageSub').textContent   = t(`pageSub_${name}`);
     closeNav();
+
+    if (name === 'map') initHousesMap();
+  }
+
+  // ── HOUSES MAP ───────────────────────────────────────────────────────────────
+  let _hMap = null;
+  let _hMapMarkers = [];
+
+  function initHousesMap() {
+    const houses = (dashHouses || []).filter(h => h.lat && h.lng);
+
+    if (!_hMap) {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconUrl: '/marker-icon.png',
+        iconRetinaUrl: '/marker-icon-2x.png',
+        shadowUrl: '/marker-shadow.png',
+      });
+      _hMap = L.map('housesMap').setView([42.7, 25.4], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', maxZoom: 18,
+      }).addTo(_hMap);
+    }
+
+    // Clear old markers
+    _hMapMarkers.forEach(m => m.remove());
+    _hMapMarkers = [];
+
+    houses.forEach(h => {
+      const phaseText = h.current_phase ? `<br><span style="color:#a78bfa">🔧 ${h.current_phase}</span>` : '';
+      const dateText  = h.start_date    ? `<br><span style="color:#7a85a3">📅 ${h.start_date}</span>`    : '';
+      const popup = `
+        <div style="font-family:'Segoe UI',sans-serif;min-width:160px">
+          <strong style="font-size:0.95rem">${h.name}</strong>
+          <div style="font-size:0.8rem;color:#555;margin-top:2px">📍 ${h.location}</div>
+          ${phaseText}${dateText}
+          <div style="margin-top:6px;font-size:0.8rem;color:#2d8a4e;font-weight:600">
+            💰 €${h.totalValue.toFixed(2)}
+          </div>
+        </div>`;
+      const marker = L.marker([h.lat, h.lng])
+        .addTo(_hMap)
+        .bindPopup(popup)
+        .bindTooltip(h.name, { permanent: true, direction: 'top', offset: [0, -10],
+          className: 'house-map-label' });
+      _hMapMarkers.push(marker);
+    });
+
+    if (houses.length > 0) {
+      const bounds = L.latLngBounds(houses.map(h => [h.lat, h.lng]));
+      _hMap.fitBounds(bounds, { padding: [40, 40] });
+    }
+
+    // force Leaflet to recalculate size after the view becomes visible
+    setTimeout(() => _hMap.invalidateSize(), 50);
   }
 
   function onRefresh() {
