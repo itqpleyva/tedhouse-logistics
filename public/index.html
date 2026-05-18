@@ -683,7 +683,7 @@
       searchPlaceholder:'Search house...', searchClear:'Clear',
       sectionLabel:'Houses — warehouse detail',
       loading:'Loading...', noData:'No data.', connError:'Connection error.',
-      totalInventory:'Total inventory value', totalWarehouse:'Total warehouse value',
+      totalInventory:'Total inventory value', totalWarehouse:'Remaining estimated value',
       orderFormTitle:'📦 New Material Order',
       orderFormDesc:"Enter the quantity needed for each material. We'll calculate the optimal pickup route using available surpluses.",
       startingPoint:'📍 Driver starting location', destHouseLabel:'🏠 Destination house',
@@ -716,7 +716,7 @@
       searchPlaceholder:'Търси къща...', searchClear:'Изчисти',
       sectionLabel:'Къщи — детайли на склад',
       loading:'Зареждане...', noData:'Няма данни.', connError:'Грешка при свързване.',
-      totalInventory:'Обща стойност на инвентара', totalWarehouse:'Обща стойност на склада',
+      totalInventory:'Обща стойност на инвентара', totalWarehouse:'Оставаща прогнозна стойност',
       orderFormTitle:'📦 Нова поръчка за материали',
       orderFormDesc:'Въведете необходимото количество за всеки материал. Ще изчислим оптималния маршрут за събиране на наличните излишъци.',
       startingPoint:'📍 Начална локация на шофьора', destHouseLabel:'🏠 Целева къща',
@@ -859,9 +859,8 @@
           <strong style="font-size:0.95rem">${h.name}</strong>
           <div style="font-size:0.8rem;color:#555;margin-top:2px">📍 ${h.location}</div>
           ${phaseText}${dateText}
-          <div style="margin-top:6px;font-size:0.8rem;color:#2d8a4e;font-weight:600">
-            💰 €${h.totalValue.toFixed(2)}
-          </div>
+          <div style="margin-top:6px;font-size:0.75rem;color:#7a85a3">Remaining est. value</div>
+          <div style="font-size:0.85rem;color:#2d8a4e;font-weight:700">€${h.totalValue.toFixed(2)}</div>
         </div>`;
       const marker = L.marker([h.lat, h.lng])
         .addTo(_hMap)
