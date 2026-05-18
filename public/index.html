@@ -463,8 +463,8 @@
     <div id="invFields"></div>
     <p class="modal-err" id="invModalErr"></p>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeInventoryModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveInventory()">Save</button>
+      <button class="btn btn-ghost" id="invCancelBtn" onclick="closeInventoryModal()">Cancel</button>
+      <button class="btn btn-primary" id="invSaveBtn" onclick="saveInventory()">Save</button>
     </div>
   </div>
 </div>
@@ -482,15 +482,15 @@
       <button class="modal-close" onclick="closeHouseModal()">✕</button>
     </div>
     <div class="modal-field">
-      <label>Name</label>
+      <label id="mNameLabel">Name</label>
       <input id="mName" type="text" placeholder="House name" />
     </div>
     <div class="modal-field">
-      <label>Location</label>
+      <label id="mLocationLabel">Location</label>
       <input id="mLocation" type="text" placeholder="City, region…" />
     </div>
     <div class="modal-field">
-      <label>Coordinates <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <label id="mCoordLabel">Coordinates <span id="mCoordOptional" style="font-weight:400;color:var(--muted)">(optional)</span></label>
       <div class="modal-coords">
         <input id="mLat" type="number" step="any" placeholder="Latitude" />
         <input id="mLng" type="number" step="any" placeholder="Longitude" />
@@ -498,11 +498,11 @@
     </div>
     <div class="modal-coords" style="gap:0.75rem;display:grid;grid-template-columns:1fr 1fr;margin-bottom:1rem">
       <div class="modal-field" style="margin-bottom:0">
-        <label>Start date <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <label id="mStartDateLabel">Start date <span id="mStartOptional" style="font-weight:400;color:var(--muted)">(optional)</span></label>
         <input id="mStartDate" type="date" />
       </div>
       <div class="modal-field" style="margin-bottom:0">
-        <label>Current phase <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <label id="mPhaseLabel">Current phase <span id="mPhaseOptional" style="font-weight:400;color:var(--muted)">(optional)</span></label>
         <select id="mPhase">
           <option value="">— none —</option>
           <option value="Foundation">Foundation</option>
@@ -525,7 +525,7 @@
         transition:border-color 0.2s,color 0.2s">
         📍 Use my location
       </button>
-      <button onclick="pickMapForHouse()" style="
+      <button id="mPickMapBtn" onclick="pickMapForHouse()" style="
         padding:0.55rem;background:var(--card);border:1px solid var(--border);
         border-radius:8px;color:var(--muted);font-size:0.82rem;cursor:pointer;
         transition:border-color 0.2s,color 0.2s">
@@ -534,8 +534,8 @@
     </div>
     <p class="modal-err" id="modalErr"></p>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeHouseModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveHouse()">Save</button>
+      <button class="btn btn-ghost" id="houseCancelBtn" onclick="closeHouseModal()">Cancel</button>
+      <button class="btn btn-primary" id="houseSaveBtn" onclick="saveHouse()">Save</button>
     </div>
   </div>
 </div>
@@ -544,13 +544,13 @@
 <div id="loginScreen">
   <div class="login-card">
     <h1>TEDHOUSE LOGISTICS</h1>
-    <p>Sign in to continue</p>
+    <p id="loginSubtitle">Sign in to continue</p>
     <div class="login-field">
-      <label>Username</label>
+      <label id="loginUserLabel">Username</label>
       <input id="loginUser" type="text" placeholder="username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()" />
     </div>
     <div class="login-field">
-      <label>Password</label>
+      <label id="loginPassLabel">Password</label>
       <input id="loginPass" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" />
     </div>
     <div id="loginErr"></div>
@@ -710,6 +710,39 @@
       stops:'stops', estimated:'estimated', openMaps:'↗ Open in Google Maps',
       startingPointLabel:'Starting point', noMaterials:'No materials to contribute',
       pickupRoute:'Pickup route', noHouses:'No houses with available materials.',
+      // modals
+      cancel:'Cancel', save:'Save',
+      addHouseBtnLabel:'＋ Add house',
+      modalAddTitle:'Add house', modalEditPrefix:'Edit — ',
+      modalUpdateStockPrefix:'📦 Update Stock — ',
+      fieldName:'Name', fieldLocation:'Location', fieldCoordinates:'Coordinates',
+      fieldOptional:'(optional)', fieldStartDate:'Start date', fieldPhase:'Current phase',
+      phaseNone:'— none —',
+      Foundation:'Foundation', Framing:'Framing', Roofing:'Roofing',
+      Electrical:'Electrical', Plumbing:'Plumbing', Insulation:'Insulation',
+      Drywall:'Drywall', Finishing:'Finishing', Landscaping:'Landscaping', Completed:'Completed',
+      phHouseName:'House name', phCityRegion:'City, region…', phLat:'Latitude', phLng:'Longitude',
+      pickOnMap:'🗺 Pick on map', useMyLocation:'📍 Use my location',
+      locating:'📍 Locating…', locationFilled:'📍 Location filled ✓', locationError:'📍 Could not get location',
+      // login
+      loginSubtitle:'Sign in to continue', loginUserLabel:'Username', loginPassLabel:'Password',
+      phUsername:'username', phPassword:'password',
+      signIn:'Sign in', signingIn:'Signing in…', enterCredentials:'Enter username and password.',
+      logout:'Logout',
+      // fuel
+      fuelSectionLabel:'⛽ Fuel estimate', fuelConsLbl:'L / 100 km', fuelPriceLbl:'€ / litre',
+      // house card chips
+      chipStart:'Start', chipPhase:'Phase', chipDestination:'Destination',
+      // delete confirm
+      deleteConfirmPrefix:'Delete ', btnNo:'No', btnYesDelete:'Yes, delete',
+      // validation / errors
+      nameLocationRequired:'Name and location are required.', errorPrefix:'Error:',
+      // route reasons
+      algoNote:'Stop order optimised with Nearest Neighbor + 2-opt to minimise total travel distance. Each pickup house was selected as the closest location that can supply the requested quantity, or the best partial source when no single warehouse has enough stock.',
+      reasonNearest:'Nearest warehouse with enough {mats} to fill the full order — {dist} km from origin',
+      reasonPartialAll:'No single warehouse covers full demand — taking {mats} here ({dist} km from origin)',
+      reasonNearestFull:'Nearest full source for {mat}',
+      reasonPartial:'Partial pickup: {qty} {mat} ({available} available)',
       Lumber:'Lumber', Screws:'Screws', Boards:'Boards', Tiles:'Tiles',
       unidades:'units', 'm²':'m²',
     },
@@ -740,6 +773,39 @@
       stops:'спирки', estimated:'прибл.', openMaps:'↗ Отвори в Google Maps',
       startingPointLabel:'Начална точка', noMaterials:'Няма материали за принос',
       pickupRoute:'Маршрут за събиране', noHouses:'Няма къщи с налични материали.',
+      // modals
+      cancel:'Откажи', save:'Запази',
+      addHouseBtnLabel:'＋ Добави къща',
+      modalAddTitle:'Добави къща', modalEditPrefix:'Редактирай — ',
+      modalUpdateStockPrefix:'📦 Обнови склад — ',
+      fieldName:'Име', fieldLocation:'Локация', fieldCoordinates:'Координати',
+      fieldOptional:'(незадължително)', fieldStartDate:'Начална дата', fieldPhase:'Текуща фаза',
+      phaseNone:'— без —',
+      Foundation:'Основи', Framing:'Конструкция', Roofing:'Покрив',
+      Electrical:'Електричество', Plumbing:'ВиК', Insulation:'Изолация',
+      Drywall:'Гипсокартон', Finishing:'Довършителни', Landscaping:'Озеленяване', Completed:'Завършена',
+      phHouseName:'Наименование на къща', phCityRegion:'Град, регион…', phLat:'Ширина', phLng:'Дължина',
+      pickOnMap:'🗺 Избери на карта', useMyLocation:'📍 Използвай моята локация',
+      locating:'📍 Локализиране…', locationFilled:'📍 Локацията е зададена ✓', locationError:'📍 Неуспешна локализация',
+      // login
+      loginSubtitle:'Влезте в системата', loginUserLabel:'Потребителско име', loginPassLabel:'Парола',
+      phUsername:'потребителско_име', phPassword:'парола',
+      signIn:'Вход', signingIn:'Влизане…', enterCredentials:'Въведете потребителско име и парола.',
+      logout:'Изход',
+      // fuel
+      fuelSectionLabel:'⛽ Разход на гориво', fuelConsLbl:'Л / 100 км', fuelPriceLbl:'€ / литър',
+      // house card chips
+      chipStart:'Начало', chipPhase:'Фаза', chipDestination:'Дестинация',
+      // delete confirm
+      deleteConfirmPrefix:'Изтрий ', btnNo:'Не', btnYesDelete:'Да, изтрий',
+      // validation / errors
+      nameLocationRequired:'Необходими са Ime и Locация.', errorPrefix:'Грешка:',
+      // route reasons
+      algoNote:'Редът на спирките е оптимизиран с Nearest Neighbor + 2-opt за минимално разстояние. Всяка спирка е избрана като най-близкия склад, покриващ нужното количество, или като най-добрия частичен източник при недостиг.',
+      reasonNearest:'Най-близкият склад с достатъчно {mats} за цялата поръчка — {dist} км от начало',
+      reasonPartialAll:'Нито един склад не покрива цялото търсене — взима {mats} тук ({dist} км от начало)',
+      reasonNearestFull:'Най-близкият пълен източник за {mat}',
+      reasonPartial:'Частично вземане: {qty} {mat} ({available} налични)',
       Lumber:'Дървен материал', Screws:'Винтове', Boards:'Дъски', Tiles:'Керемиди',
       unidades:'бр.', 'm²':'m²',
     },
@@ -768,6 +834,8 @@
     document.getElementById('navMap').querySelector('span:last-child').textContent       = t('navMap');
     document.getElementById('pdfBtn').querySelector('.btn-label').textContent     = 'PDF';
     document.getElementById('langBtn').querySelector('.btn-label').textContent     = currentLang === 'en' ? 'BG' : 'EN';
+    document.getElementById('logoutBtn').querySelector('.btn-label').textContent  = t('logout');
+    document.getElementById('addHouseBtn').textContent = t('addHouseBtnLabel');
 
     document.getElementById('searchInput').placeholder  = t('searchPlaceholder');
     document.getElementById('clearBtn').title           = t('searchClear');
@@ -777,6 +845,46 @@
     document.getElementById('calcBtn').textContent        = t('calcBtn');
     document.getElementById('formHint').textContent       = t('formHint');
     document.getElementById('formHintStrong').textContent = t('formHintStrong');
+    document.getElementById('fuelSectionLabel').textContent = t('fuelSectionLabel');
+    document.getElementById('fuelConsLbl').textContent      = t('fuelConsLbl');
+    document.getElementById('fuelPriceLbl').textContent     = t('fuelPriceLbl');
+
+    // login screen
+    document.getElementById('loginSubtitle').textContent  = t('loginSubtitle');
+    document.getElementById('loginUserLabel').textContent  = t('loginUserLabel');
+    document.getElementById('loginPassLabel').textContent  = t('loginPassLabel');
+    document.getElementById('loginUser').placeholder       = t('phUsername');
+    document.getElementById('loginPass').placeholder       = t('phPassword');
+    document.getElementById('loginBtn').textContent        = t('signIn');
+
+    // house modal labels & placeholders
+    document.getElementById('mNameLabel').textContent      = t('fieldName');
+    document.getElementById('mLocationLabel').textContent  = t('fieldLocation');
+    document.getElementById('mCoordLabel').firstChild.textContent = t('fieldCoordinates') + ' ';
+    document.getElementById('mCoordOptional').textContent  = t('fieldOptional');
+    document.getElementById('mStartDateLabel').firstChild.textContent = t('fieldStartDate') + ' ';
+    document.getElementById('mStartOptional').textContent  = t('fieldOptional');
+    document.getElementById('mPhaseLabel').firstChild.textContent = t('fieldPhase') + ' ';
+    document.getElementById('mPhaseOptional').textContent  = t('fieldOptional');
+    document.getElementById('mName').placeholder     = t('phHouseName');
+    document.getElementById('mLocation').placeholder = t('phCityRegion');
+    document.getElementById('mLat').placeholder      = t('phLat');
+    document.getElementById('mLng').placeholder      = t('phLng');
+    document.getElementById('mLocBtn').textContent   = t('useMyLocation');
+    document.getElementById('mPickMapBtn').textContent = t('pickOnMap');
+    document.getElementById('houseCancelBtn').textContent = t('cancel');
+    document.getElementById('houseSaveBtn').textContent   = t('save');
+
+    // inventory modal buttons
+    document.getElementById('invCancelBtn').textContent = t('cancel');
+    document.getElementById('invSaveBtn').textContent   = t('save');
+
+    // phase select options (value stays as English DB key; text is translated)
+    const phaseKeys = ['Foundation','Framing','Roofing','Electrical','Plumbing','Insulation','Drywall','Finishing','Landscaping','Completed'];
+    const sel = document.getElementById('mPhase');
+    sel.options[0].textContent = t('phaseNone');
+    phaseKeys.forEach((k, i) => { sel.options[i + 1].textContent = t(k); });
+
     const activeView = document.querySelector('.view.active')?.id.replace('view-','') || 'dashboard';
     document.getElementById('pageTitle').textContent = t(`pageTitle_${activeView}`);
     document.getElementById('pageSub').textContent   = t(`pageSub_${activeView}`);
@@ -897,17 +1005,17 @@
           <div style="padding:0.75rem 1rem">
             <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">
               <div style="display:flex;align-items:center;gap:0.3rem;background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.2);border-radius:6px;padding:0.2rem 0.5rem">
-                <span style="font-size:0.65rem;color:#7a85a3;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Start</span>
+                <span style="font-size:0.65rem;color:#7a85a3;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">${t('chipStart')}</span>
                 <span style="font-size:0.78rem;color:${h.start_date ? '#e2e8f0' : '#7a85a3'};font-weight:600">📅 ${h.start_date || '—'}</span>
               </div>
               <div style="display:flex;align-items:center;gap:0.3rem;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:6px;padding:0.2rem 0.5rem">
-                <span style="font-size:0.65rem;color:#7a85a3;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Phase</span>
-                <span style="font-size:0.78rem;color:${h.current_phase ? '#a78bfa' : '#7a85a3'};font-weight:600">${h.current_phase ? '🔧 ' + h.current_phase : '—'}</span>
+                <span style="font-size:0.65rem;color:#7a85a3;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">${t('chipPhase')}</span>
+                <span style="font-size:0.78rem;color:${h.current_phase ? '#a78bfa' : '#7a85a3'};font-weight:600">${h.current_phase ? '🔧 ' + t(h.current_phase) : '—'}</span>
               </div>
             </div>
             ${materialsHTML}
             <div style="border-top:1px solid #2e3250;margin-top:0.5rem;padding-top:0.6rem;display:flex;justify-content:space-between;align-items:center">
-              <span style="font-size:0.72rem;color:#7a85a3">Remaining materials est. value</span>
+              <span style="font-size:0.72rem;color:#7a85a3">${t('totalWarehouse')}</span>
               <span style="font-size:0.92rem;font-weight:700;color:#3ecf6e">${euro(h.totalValue)}</span>
             </div>
           </div>
@@ -1013,18 +1121,18 @@
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.9rem">
           <div style="display:flex;align-items:center;gap:0.4rem;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:7px;padding:0.3rem 0.65rem">
-            <span style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Start</span>
+            <span style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">${t('chipStart')}</span>
             <span style="font-size:0.82rem;color:${h.start_date ? 'var(--text)' : 'var(--muted)'};font-weight:600">📅 ${h.start_date || '—'}</span>
           </div>
           <div style="display:flex;align-items:center;gap:0.4rem;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);border-radius:7px;padding:0.3rem 0.65rem">
-            <span style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Phase</span>
-            <span style="font-size:0.82rem;color:${h.current_phase ? 'var(--purple)' : 'var(--muted)'};font-weight:600">${h.current_phase ? '🔧 ' + h.current_phase : '—'}</span>
+            <span style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">${t('chipPhase')}</span>
+            <span style="font-size:0.82rem;color:${h.current_phase ? 'var(--purple)' : 'var(--muted)'};font-weight:600">${h.current_phase ? '🔧 ' + t(h.current_phase) : '—'}</span>
           </div>
         </div>
         <div class="del-confirm" id="del-${h.id}">
-          <span>Delete <strong>${h.name}</strong>?</span>
-          <button class="btn btn-ghost" style="padding:0.25rem 0.65rem;font-size:0.76rem" onclick="cancelDelete(${h.id})">No</button>
-          <button class="btn" style="padding:0.25rem 0.65rem;font-size:0.76rem;background:var(--red);color:#fff" onclick="confirmDelete(${h.id})">Yes, delete</button>
+          <span>${t('deleteConfirmPrefix')}<strong>${h.name}</strong>?</span>
+          <button class="btn btn-ghost" style="padding:0.25rem 0.65rem;font-size:0.76rem" onclick="cancelDelete(${h.id})">${t('btnNo')}</button>
+          <button class="btn" style="padding:0.25rem 0.65rem;font-size:0.76rem;background:var(--red);color:#fff" onclick="confirmDelete(${h.id})">${t('btnYesDelete')}</button>
         </div>
         ${h.materials.map(m => {
           const meta = MAT_META[m.name] || { icon: '📦', cls: 'bar-boards', color: '#7a85a3' };
@@ -1057,7 +1165,7 @@
     const mapPickBtn = document.getElementById('mapPickBtn');
     if (mapPickBtn) {
       mapPickBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:0.65rem 0.9rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.88rem;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s;width:100%';
-      mapPickBtn.textContent = '🗺 Pick on map';
+      mapPickBtn.textContent = t('pickOnMap');
       mapPickBtn.href = '/map-picker.html';
       mapPickBtn.onclick = null;
     }
@@ -1140,7 +1248,7 @@
       renderResults(data, mats);
     } catch (e) {
       document.getElementById('results').innerHTML =
-        `<div class="state-msg">Error: ${e.message}</div>`;
+        `<div class="state-msg">${t('errorPrefix')} ${e.message}</div>`;
     }
   }
 
@@ -1188,16 +1296,12 @@
         <div class="stop-num" style="background:var(--green);color:#0f1117">🏁</div>
         <div class="stop-info">
           <p class="stop-name">${destination.name}</p>
-          <p class="stop-loc">📍 ${destination.location} &nbsp;·&nbsp; <span style="color:var(--green)">Destination</span></p>
+          <p class="stop-loc">📍 ${destination.location} &nbsp;·&nbsp; <span style="color:var(--green)">${t('chipDestination')}</span></p>
         </div>
       </div>`;
 
     const algoNote = route.length > 1
-      ? `<p class="stop-reason" style="margin-bottom:1rem;font-style:normal">
-           Stop order optimised with Nearest Neighbor + 2-opt to minimise total travel distance.
-           Each pickup house was selected as the closest location that can supply the requested quantity,
-           or the best partial source when no single warehouse has enough stock.
-         </p>`
+      ? `<p class="stop-reason" style="margin-bottom:1rem;font-style:normal">${t('algoNote')}</p>`
       : '';
 
     const stopsHtml = `
@@ -1217,15 +1321,15 @@
           let reasonLine   = '';
           if (allFull) {
             const matNames = contribs.map(c => mn(c.name)).join(' & ');
-            reasonLine = `Nearest warehouse with enough <strong>${matNames}</strong> to fill the full order — <strong>${dist} km</strong> from origin`;
+            reasonLine = t('reasonNearest').replace('{mats}', `<strong>${matNames}</strong>`).replace('{dist}', `<strong>${dist}</strong>`);
           } else if (allPartial) {
             const matNames = contribs.map(c => `${fmt(c.quantity)} of ${fmt(c.availableQty)} ${mn(c.name)}`).join(', ');
-            reasonLine = `No single warehouse covers full demand — taking ${matNames} here (<strong>${dist} km</strong> from origin)`;
+            reasonLine = t('reasonPartialAll').replace('{mats}', matNames).replace('{dist}', `<strong>${dist}</strong>`);
           } else {
             reasonLine = contribs.map(c => {
               if (c.selectionReason === 'closest_full')
-                return `Nearest full source for <strong>${mn(c.name)}</strong>`;
-              return `Partial pickup: <strong>${fmt(c.quantity)} ${mn(c.name)}</strong> (${fmt(c.availableQty)} available)`;
+                return t('reasonNearestFull').replace('{mat}', `<strong>${mn(c.name)}</strong>`);
+              return t('reasonPartial').replace('{qty}', `<strong>${fmt(c.quantity)}</strong>`).replace('{mat}', mn(c.name)).replace('{available}', fmt(c.availableQty));
             }).join(' · ');
           }
 
@@ -1309,7 +1413,7 @@
   function openHouseModal(houseId) {
     const house = houseId != null ? dashHouses.find(h => h.id === houseId) : null;
     _editingHouseId = house ? house.id : null;
-    document.getElementById('modalTitle').textContent = house ? `Edit — ${house.name}` : 'Add house';
+    document.getElementById('modalTitle').textContent = house ? t('modalEditPrefix') + house.name : t('modalAddTitle');
     document.getElementById('mName').value     = house ? house.name     : '';
     document.getElementById('mLocation').value = house ? house.location : '';
     document.getElementById('mLat').value       = house?.lat ?? '';
@@ -1337,7 +1441,7 @@
     const errEl    = document.getElementById('modalErr');
 
     if (!name || !location) {
-      errEl.textContent = 'Name and location are required.';
+      errEl.textContent = t('nameLocationRequired');
       return;
     }
     errEl.textContent = '';
@@ -1398,16 +1502,16 @@
   function fillModalCoords() {
     const btn = document.getElementById('mLocBtn');
     if (!navigator.geolocation) return;
-    btn.textContent = '📍 Locating…';
+    btn.textContent = t('locating');
     navigator.geolocation.getCurrentPosition(
       pos => {
         document.getElementById('mLat').value = pos.coords.latitude.toFixed(6);
         document.getElementById('mLng').value = pos.coords.longitude.toFixed(6);
-        btn.textContent = '📍 Location filled ✓';
+        btn.textContent = t('locationFilled');
         btn.style.color = 'var(--green)';
         btn.style.borderColor = 'var(--green)';
       },
-      () => { btn.textContent = '📍 Could not get location'; },
+      () => { btn.textContent = t('locationError'); },
       { enableHighAccuracy: false, timeout: 8000 }
     );
   }
@@ -1430,7 +1534,7 @@
         btn.style.background  = 'rgba(62,207,110,0.08)';
         btn.style.borderColor = '#3ecf6e';
         btn.style.color       = '#3ecf6e';
-        btn.textContent       = '🗺 ✓ ' + driverCoords.lat.toFixed(5) + ', ' + driverCoords.lng.toFixed(5);
+        btn.textContent       = '🗺 ✓ ' + driverCoords.lat.toFixed(5) + ', ' + driverCoords.lng.toFixed(5);  // coords shown as-is intentionally
         btn.href              = '#';
         btn.onclick = function(e) {
           e.preventDefault();
@@ -1664,7 +1768,7 @@
   function openInventoryModal(houseId) {
     _invHouseId = houseId;
     const house = dashHouses.find(h => h.id === houseId);
-    document.getElementById('invModalTitle').textContent = `📦 Update Stock — ${house?.name || ''}`;
+    document.getElementById('invModalTitle').textContent = t('modalUpdateStockPrefix') + (house?.name || '');
     document.getElementById('invModalErr').textContent = '';
 
     const currentQty = {};
@@ -1729,8 +1833,8 @@
     const errEl = document.getElementById('loginErr');
     const username = document.getElementById('loginUser').value.trim();
     const password = document.getElementById('loginPass').value;
-    if (!username || !password) { errEl.textContent = 'Enter username and password.'; return; }
-    btn.disabled = true; btn.textContent = 'Signing in…';
+    if (!username || !password) { errEl.textContent = t('enterCredentials'); return; }
+    btn.disabled = true; btn.textContent = t('signingIn');
     errEl.textContent = '';
     try {
       const res  = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
@@ -1742,7 +1846,7 @@
     } catch (e) {
       errEl.textContent = e.message;
     } finally {
-      btn.disabled = false; btn.textContent = 'Sign in';
+      btn.disabled = false; btn.textContent = t('signIn');
     }
   }
 
@@ -1768,7 +1872,7 @@
       localStorage.removeItem('mapPin');
       localStorage.removeItem('pendingHouseForm');
       _editingHouseId = pending.id || null;
-      document.getElementById('modalTitle').textContent = pending.id ? `Edit — ${pending.name}` : 'Add house';
+      document.getElementById('modalTitle').textContent = pending.id ? t('modalEditPrefix') + pending.name : t('modalAddTitle');
       document.getElementById('mName').value     = pending.name     || '';
       document.getElementById('mLocation').value = pending.location || '';
       document.getElementById('mLat').value       = pin ? pin.lat.toFixed(6) : (pending.lat || '');
