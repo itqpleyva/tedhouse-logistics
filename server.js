@@ -294,15 +294,15 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       let rem = qtyNeeded;
       const mid = parseInt(matId);
 
-      const sorted = allHouses
-        .filter(h => h.inventory[mid] && h.inventory[mid].quantity > 0)
-        .sort((a, b) => {
-          const distA = Math.max(haversine(originNode.lat, originNode.lng, a.lat, a.lng), 0.1);
-          const distB = Math.max(haversine(originNode.lat, originNode.lng, b.lat, b.lng), 0.1);
-          const scoreA = a.inventory[mid].quantity / distA;
-          const scoreB = b.inventory[mid].quantity / distB;
-          return scoreB - scoreA;
-        });
+      const candidates = allHouses.filter(h => h.inventory[mid] && h.inventory[mid].quantity > 0);
+      const distOf = h => Math.max(haversine(originNode.lat, originNode.lng, h.lat, h.lng), 0.1);
+
+      // If any single house can satisfy the full remaining demand, prefer the closest one.
+      // Otherwise rank by quantity/distance to minimise stops vs travel.
+      const canSatisfy = candidates.filter(h => h.inventory[mid].quantity >= rem);
+      const sorted = canSatisfy.length > 0
+        ? canSatisfy.sort((a, b) => distOf(a) - distOf(b))
+        : candidates.sort((a, b) => (b.inventory[mid].quantity / distOf(b)) - (a.inventory[mid].quantity / distOf(a)));
 
       for (const house of sorted) {
         if (rem <= 0) break;
