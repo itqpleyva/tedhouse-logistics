@@ -815,7 +815,10 @@
     setTimeout(() => { if (_hMap) _hMap.invalidateSize(); }, 260);
   }
 
+  const VALID_VIEWS = ['dashboard', 'order', 'map'];
+
   function showView(name) {
+    if (!VALID_VIEWS.includes(name)) name = 'dashboard';
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
     document.getElementById(`view-${name}`).classList.add('active');
@@ -823,6 +826,7 @@
 
     document.getElementById('pageTitle').textContent = t(`pageTitle_${name}`);
     document.getElementById('pageSub').textContent   = t(`pageSub_${name}`);
+    location.hash = name;
     closeNav();
 
     if (name === 'map') initHousesMap();
@@ -1780,13 +1784,12 @@
 
     if (localStorage.getItem('returnToOrder')) {
       localStorage.removeItem('returnToOrder');
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      document.getElementById('view-order').classList.add('active');
-      document.getElementById('navOrder').classList.add('active');
-      document.getElementById('pageTitle').textContent = i18n.en.pageTitle_order;
-      document.getElementById('pageSub').textContent   = i18n.en.pageSub_order;
+      showView('order');
+      return;
     }
+
+    const hashView = location.hash.replace('#', '');
+    showView(VALID_VIEWS.includes(hashView) ? hashView : 'dashboard');
   }
 
   // ── INIT ─────────────────────────────────────────────────────────────────────
