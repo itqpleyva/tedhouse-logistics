@@ -142,6 +142,12 @@
       padding: 2px 7px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .house-map-label::before { display: none; }
+    .house-map-popup .leaflet-popup-content-wrapper {
+      background: transparent; border: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      border-radius: 10px; padding: 0;
+    }
+    .house-map-popup .leaflet-popup-content { margin: 0; }
+    .house-map-popup .leaflet-popup-tip-container { display: none; }
 
     /* ── TOTALS ── */
     .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px,1fr)); gap: 1rem; margin-bottom: 2rem; }
@@ -851,20 +857,63 @@
     _hMapMarkers.forEach(m => m.remove());
     _hMapMarkers = [];
 
+    // compute max per material across ALL houses for progress bars
+    const allHouses = dashHouses || [];
+    const houseMax = {};
+    allHouses.forEach(h => h.materials.forEach(m => {
+      houseMax[m.name] = Math.max(houseMax[m.name] || 0, m.quantity);
+    }));
+
     houses.forEach(h => {
-      const phaseText = h.current_phase ? `<br><span style="color:#a78bfa">🔧 ${h.current_phase}</span>` : '';
-      const dateText  = h.start_date    ? `<br><span style="color:#7a85a3">📅 ${h.start_date}</span>`    : '';
+      const materialsHTML = h.materials.map(m => {
+        const meta = MAT_META[m.name] || { icon: '📦', color: '#7a85a3' };
+        const pct  = houseMax[m.name] ? Math.round((m.quantity / houseMax[m.name]) * 100) : 0;
+        return `
+          <div style="margin-bottom:0.65rem">
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:0.25rem">
+              <span style="color:#e2e8f0;font-weight:500;display:flex;align-items:center;gap:0.3rem">
+                <span style="width:7px;height:7px;border-radius:50%;background:${meta.color};display:inline-block"></span>
+                ${meta.icon} ${mn(m.name)}
+              </span>
+              <span style="color:#7a85a3">
+                <strong style="color:#e2e8f0">${fmt(m.quantity)}</strong> ${mu(m.unit)}
+                <span style="color:#3ecf6e;margin-left:0.35rem">${euro(m.subtotal)}</span>
+              </span>
+            </div>
+            <div style="height:4px;background:#2e3250;border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:99px"></div>
+            </div>
+          </div>`;
+      }).join('');
+
       const popup = `
-        <div style="font-family:'Segoe UI',sans-serif;min-width:160px">
-          <strong style="font-size:0.95rem">${h.name}</strong>
-          <div style="font-size:0.8rem;color:#555;margin-top:2px">📍 ${h.location}</div>
-          ${phaseText}${dateText}
-          <div style="margin-top:6px;font-size:0.75rem;color:#7a85a3">Remaining materials est. value</div>
-          <div style="font-size:0.85rem;color:#2d8a4e;font-weight:700">€${h.totalValue.toFixed(2)}</div>
+        <div style="font-family:'Segoe UI',sans-serif;width:260px;background:#21253a;color:#e2e8f0;border-radius:10px;overflow:hidden;margin:-13px -19px">
+          <div style="background:#1a1d27;padding:0.75rem 1rem;border-bottom:1px solid #2e3250">
+            <div style="font-size:0.97rem;font-weight:700">${h.name}</div>
+            <div style="font-size:0.75rem;color:#7a85a3;margin-top:0.15rem">📍 ${h.location}</div>
+          </div>
+          <div style="padding:0.75rem 1rem">
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">
+              <div style="display:flex;align-items:center;gap:0.3rem;background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.2);border-radius:6px;padding:0.2rem 0.5rem">
+                <span style="font-size:0.65rem;color:#7a85a3;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Start</span>
+                <span style="font-size:0.78rem;color:${h.start_date ? '#e2e8f0' : '#7a85a3'};font-weight:600">📅 ${h.start_date || '—'}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.3rem;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:6px;padding:0.2rem 0.5rem">
+                <span style="font-size:0.65rem;color:#7a85a3;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Phase</span>
+                <span style="font-size:0.78rem;color:${h.current_phase ? '#a78bfa' : '#7a85a3'};font-weight:600">${h.current_phase ? '🔧 ' + h.current_phase : '—'}</span>
+              </div>
+            </div>
+            ${materialsHTML}
+            <div style="border-top:1px solid #2e3250;margin-top:0.5rem;padding-top:0.6rem;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:0.72rem;color:#7a85a3">Remaining materials est. value</span>
+              <span style="font-size:0.92rem;font-weight:700;color:#3ecf6e">${euro(h.totalValue)}</span>
+            </div>
+          </div>
         </div>`;
+
       const marker = L.marker([h.lat, h.lng])
         .addTo(_hMap)
-        .bindPopup(popup)
+        .bindPopup(popup, { maxWidth: 300, minWidth: 280, className: 'house-map-popup' })
         .bindTooltip(h.name, { permanent: true, direction: 'top', offset: [0, -10],
           className: 'house-map-label' });
       _hMapMarkers.push(marker);
