@@ -137,11 +137,13 @@
       #view-map.active { left: 0; top: 57px; }
     }
     .house-map-label {
-      background: #1a1d27; color: #e2e8f0; border: 1px solid #2e3250;
-      border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+      color: #e2e8f0; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
       padding: 2px 7px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      border: none;
     }
     .house-map-label::before { display: none; }
+    .house-map-label--green { background: #1a6b38; border: 1px solid #3ecf6e; }
+    .house-map-label--red   { background: #6b1a1a; border: 1px solid #f76f6f; }
     .house-map-popup .leaflet-popup-content-wrapper {
       background: transparent; border: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
       border-radius: 10px; padding: 0;
@@ -911,11 +913,12 @@
           </div>
         </div>`;
 
+      const hasStock = h.materials.some(m => m.quantity > 0);
       const marker = L.marker([h.lat, h.lng])
         .addTo(_hMap)
         .bindPopup(popup, { maxWidth: 300, minWidth: 280, className: 'house-map-popup' })
         .bindTooltip(h.name, { permanent: true, direction: 'top', offset: [0, -10],
-          className: 'house-map-label' });
+          className: 'house-map-label ' + (hasStock ? 'house-map-label--green' : 'house-map-label--red') });
       _hMapMarkers.push(marker);
     });
 
