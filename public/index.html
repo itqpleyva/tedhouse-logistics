@@ -287,7 +287,9 @@
     }
     .stop-info { flex: 1; }
     .stop-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.2rem; }
-    .stop-loc  { font-size: 0.73rem; color: var(--muted); margin-bottom: 0.6rem; }
+    .stop-loc  { font-size: 0.73rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .stop-reason { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.5rem; font-style: italic; }
+    .stop-reason strong { color: var(--text); font-style: normal; }
     .stop-mats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .mat-tag {
       background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.25);
@@ -1192,20 +1194,50 @@
         </div>
       </div>`;
 
+    const algoNote = route.length > 1
+      ? `<p class="stop-reason" style="margin-bottom:1rem;font-style:normal">
+           Stop order optimised with Nearest Neighbor + 2-opt to minimise total travel distance.
+           Each pickup house was selected as the closest location that can supply the requested quantity,
+           or the best partial source when no single warehouse has enough stock.
+         </p>`
+      : '';
+
     const stopsHtml = `
-      <p class="section-label" style="margin-bottom:0.85rem">${t('pickupRoute')}</p>
+      <p class="section-label" style="margin-bottom:0.5rem">${t('pickupRoute')}</p>
+      ${algoNote}
       <div class="route-stops">
         ${originCard}
         ${route.map((stop, i, arr) => {
-          const mats = Object.values(stop.contribution).map(c =>
+          const contribs = Object.values(stop.contribution);
+          const mats = contribs.map(c =>
             `<span class="mat-tag">${MAT_META[c.name]?.icon || '📦'} ${mn(c.name)}: ${fmt(c.quantity)} ${mu(c.unit)}</span>`
           ).join('');
+
+          const allFull    = contribs.every(c => c.selectionReason === 'closest_full');
+          const allPartial = contribs.every(c => c.selectionReason === 'best_partial');
+          const dist       = contribs[0]?.distanceFromOrigin ?? '?';
+          let reasonLine   = '';
+          if (allFull) {
+            const matNames = contribs.map(c => mn(c.name)).join(' & ');
+            reasonLine = `Nearest warehouse with enough <strong>${matNames}</strong> to fill the full order — <strong>${dist} km</strong> from origin`;
+          } else if (allPartial) {
+            const matNames = contribs.map(c => `${fmt(c.quantity)} of ${fmt(c.availableQty)} ${mn(c.name)}`).join(', ');
+            reasonLine = `No single warehouse covers full demand — taking ${matNames} here (<strong>${dist} km</strong> from origin)`;
+          } else {
+            reasonLine = contribs.map(c => {
+              if (c.selectionReason === 'closest_full')
+                return `Nearest full source for <strong>${mn(c.name)}</strong>`;
+              return `Partial pickup: <strong>${fmt(c.quantity)} ${mn(c.name)}</strong> (${fmt(c.availableQty)} available)`;
+            }).join(' · ');
+          }
+
           return `
             <div class="stop-card">
               <div class="stop-num">${i + 1}</div>
               <div class="stop-info">
                 <p class="stop-name">${stop.name}</p>
                 <p class="stop-loc">📍 ${stop.location}</p>
+                <p class="stop-reason">${reasonLine}</p>
                 <div class="stop-mats">${mats}</div>
               </div>
             </div>

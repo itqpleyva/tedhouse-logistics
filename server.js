@@ -300,6 +300,7 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       // If any single house can satisfy the full remaining demand, prefer the closest one.
       // Otherwise rank by quantity/distance to minimise stops vs travel.
       const canSatisfy = candidates.filter(h => h.inventory[mid].quantity >= rem);
+      const selectionReason = canSatisfy.length > 0 ? 'closest_full' : 'best_partial';
       const sorted = canSatisfy.length > 0
         ? canSatisfy.sort((a, b) => distOf(a) - distOf(b))
         : candidates.sort((a, b) => (b.inventory[mid].quantity / distOf(b)) - (a.inventory[mid].quantity / distOf(a)));
@@ -314,6 +315,9 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
           quantity: take,
           name:     house.inventory[mid].name,
           unit:     house.inventory[mid].unit,
+          selectionReason,
+          distanceFromOrigin: Math.round(distOf(house)),
+          availableQty: avail,
         };
       }
 
