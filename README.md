@@ -95,6 +95,31 @@ Permissions are enforced both in the UI (buttons hidden for `user` role) and on 
 - Supplier fallback when stock is insufficient
 - PDF inventory export
 - Bulgarian / English language toggle
+- Interactive map view with all houses plotted
+
+---
+
+## Map View
+
+The **Map View** (sidebar → 🗺 Map View) displays all houses that have GPS coordinates plotted on an interactive OpenStreetMap.
+
+### House name chips
+Each house shows a permanent label above its pin:
+- **Green chip** — house has remaining materials in stock
+- **Dark chip** — house has no materials (empty warehouse)
+
+### Clicking a pin
+Opens a detailed popup card matching the dashboard view, showing:
+- House name and location
+- Start date and current construction phase
+- All materials with quantity, unit, value, and a colour progress bar
+- Remaining materials estimated value (total)
+
+### Navigation behaviour
+- The map fills the full screen area (below the header, right of the sidebar)
+- On mobile the sidebar collapses and the map expands to full width
+- The map auto-fits to show all houses when first opened
+- Resizing the window or toggling the sidebar automatically recalculates the map size
 
 ---
 
@@ -117,7 +142,7 @@ tedhouse-logistics/
 ├── public/                    # Static files served directly by Express
 │   │
 │   ├── index.html             # Single-page application — the entire frontend lives here:
-│   │                          #   dashboard view, new order view, all modals,
+│   │                          #   dashboard view, new order view, map view, all modals,
 │   │                          #   login screen, i18n (BG/EN), PDF export, route display
 │   │
 │   ├── map-picker.html        # Standalone Leaflet map page for picking a GPS location.
