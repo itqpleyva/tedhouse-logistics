@@ -120,9 +120,9 @@
     /* ── VIEWS ── */
     .view { display: none; padding: 2rem; }
     .view.active { display: block; }
-    #view-map { padding: 0; width: 100%; }
+    #view-map { padding: 0 !important; width: 100%; }
     #view-map.active { display: flex; flex-direction: column; width: 100%; height: calc(100vh - 65px); }
-    #housesMap { flex: 1; width: 100%; min-height: 500px; }
+    #housesMap { flex: 1; width: 100%; min-height: 400px; }
     .house-map-label {
       background: #1a1d27; color: #e2e8f0; border: 1px solid #2e3250;
       border-radius: 6px; font-size: 0.75rem; font-weight: 600;
@@ -789,11 +789,13 @@
   function toggleNav() {
     document.getElementById('mainNav').classList.toggle('open');
     document.getElementById('navOverlay').classList.toggle('open');
+    setTimeout(() => { if (_hMap) _hMap.invalidateSize(); }, 260);
   }
 
   function closeNav() {
     document.getElementById('mainNav').classList.remove('open');
     document.getElementById('navOverlay').classList.remove('open');
+    setTimeout(() => { if (_hMap) _hMap.invalidateSize(); }, 260);
   }
 
   function showView(name) {
@@ -827,6 +829,9 @@
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors', maxZoom: 18,
       }).addTo(_hMap);
+
+      // recalculate on window resize (e.g. sidebar open/close, orientation change)
+      window.addEventListener('resize', () => { if (_hMap) _hMap.invalidateSize(); });
     }
 
     // Clear old markers
@@ -858,8 +863,9 @@
       _hMap.fitBounds(bounds, { padding: [40, 40] });
     }
 
-    // force Leaflet to recalculate size after the view becomes visible
-    setTimeout(() => _hMap.invalidateSize(), 50);
+    // invalidateSize twice: once immediately, once after layout settles
+    _hMap.invalidateSize();
+    setTimeout(() => { _hMap.invalidateSize(); }, 120);
   }
 
   function onRefresh() {
