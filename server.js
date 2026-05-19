@@ -287,6 +287,34 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       return res.status(400).json({ error: m.noValidQty });
     }
 
+    // Subtract whatever the destination house already has in stock —
+    // only the remaining gap needs to be picked up from other houses.
+    const [destInvRows] = await pool.query(`
+      SELECT i.material_id, i.quantity
+      FROM warehouse w JOIN inventory i ON i.warehouse_id = w.id
+      WHERE w.house_id = ?
+    `, [destinationHouseId]);
+    const destAlreadyHas = {};
+    for (const r of destInvRows) destAlreadyHas[r.material_id] = parseFloat(r.quantity);
+    for (const mid of Object.keys(needed)) {
+      const alreadyHere = destAlreadyHas[parseInt(mid)] || 0;
+      needed[parseInt(mid)] = Math.max(0, needed[parseInt(mid)] - alreadyHere);
+    }
+    // Drop materials that the destination already fully covers
+    for (const mid of Object.keys(needed)) {
+      if (needed[mid] === 0) delete needed[mid];
+    }
+    // If destination already has everything, return immediately with no pickups needed
+    if (Object.keys(needed).length === 0) {
+      return res.json({
+        origin:      { id: originNode.id, name: originNode.name, location: originNode.location },
+        destination: { id: destNode.id,   name: destNode.name,   location: destNode.location },
+        route: [], deficit: [], mapsUrl: null,
+        fullyFulfilled: true, totalStops: 0,
+        totalDistance: Math.round(haversine(originNode.lat, originNode.lng, destNode.lat, destNode.lng)),
+      });
+    }
+
     const distOf = h => Math.max(haversine(originNode.lat, originNode.lng, h.lat, h.lng), 0.1);
 
     // Houses that carry at least one needed material
@@ -381,11 +409,27 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       ? `https://www.google.com/maps/dir/${allWaypoints.map(p => `${p.lat},${p.lng}`).join('/')}`
       : `https://www.google.com/maps/search/?api=1&query=${originNode.lat},${originNode.lng}`;
 
+    // Build a summary of what the destination already had in stock
+    const destContribution = {};
+    for (const [matId, origQty] of Object.entries(orderInput)) {
+      const mid = parseInt(matId);
+      const ordered = parseFloat(origQty);
+      const alreadyHere = destAlreadyHas[mid] || 0;
+      if (ordered > 0 && alreadyHere > 0) {
+        const mat = matRows.find(m => m.id === mid);
+        destContribution[mid] = {
+          quantity: Math.min(alreadyHere, ordered),
+          name: mat.name, unit: mat.unit,
+        };
+      }
+    }
+
     res.json({
       origin:      { id: originNode.id, name: originNode.name, location: originNode.location },
       destination: { id: destNode.id,   name: destNode.name,   location: destNode.location },
       route:       route.map(h => ({ ...h, contribution: contributions[h.id] })),
       deficit:     Object.values(deficit),
+      destContribution: Object.keys(destContribution).length > 0 ? destContribution : null,
       mapsUrl,
       fullyFulfilled: Object.keys(deficit).length === 0,
       totalStops:     route.length,

@@ -733,6 +733,7 @@
       fuelSectionLabel:'⛽ Fuel estimate', fuelConsLbl:'L / 100 km', fuelPriceLbl:'€ / litre',
       // house card chips
       chipStart:'Start', chipPhase:'Phase', chipDestination:'Destination',
+      alreadyInStock:'Already in stock at destination',
       // delete confirm
       deleteConfirmPrefix:'Delete ', btnNo:'No', btnYesDelete:'Yes, delete',
       // validation / errors
@@ -794,6 +795,7 @@
       fuelSectionLabel:'⛽ Разход на гориво', fuelConsLbl:'Л / 100 км', fuelPriceLbl:'€ / литър',
       // house card chips
       chipStart:'Начало', chipPhase:'Фаза', chipDestination:'Дестинация',
+      alreadyInStock:'Вече налично в дестинацията',
       // delete confirm
       deleteConfirmPrefix:'Изтрий ', btnNo:'Не', btnYesDelete:'Да, изтрий',
       // validation / errors
@@ -1249,7 +1251,7 @@
   }
 
   function renderResults(data, order) {
-    const { origin, destination, route, deficit, mapsUrl, fullyFulfilled, totalStops, totalDistance } = data;
+    const { origin, destination, route, deficit, destContribution, mapsUrl, fullyFulfilled, totalStops, totalDistance } = data;
 
     const consumption = parseFloat(document.getElementById('fuelConsumption')?.value) || 8;
     const pricePerL   = parseFloat(document.getElementById('fuelPrice')?.value) || 1.80;
@@ -1286,6 +1288,17 @@
       </div>
       ${route.length > 0 ? '<div class="stop-arrow">↓</div>' : ''}`;
 
+    const destStockTags = destContribution
+      ? `<div class="stop-mats" style="margin-top:0.5rem">
+           <span style="font-size:0.72rem;color:#3ecf6e;font-style:italic;margin-bottom:0.3rem;display:block">${t('alreadyInStock')}:</span>
+           ${Object.values(destContribution).map(c =>
+             `<span class="mat-tag" style="border-color:rgba(62,207,110,0.4);color:#3ecf6e;background:rgba(62,207,110,0.1)">
+               ${MAT_META[c.name]?.icon || '📦'} ${mn(c.name)}: ${fmt(c.quantity)} ${mu(c.unit)}
+             </span>`
+           ).join('')}
+         </div>`
+      : '';
+
     const destCard = `
       <div class="stop-arrow">↓</div>
       <div class="stop-card" style="border-color:var(--green);background:rgba(62,207,110,0.06)">
@@ -1293,6 +1306,7 @@
         <div class="stop-info">
           <p class="stop-name">${destination.name}</p>
           <p class="stop-loc">📍 ${destination.location} &nbsp;·&nbsp; <span style="color:var(--green)">${t('chipDestination')}</span></p>
+          ${destStockTags}
         </div>
       </div>`;
 
