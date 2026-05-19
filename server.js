@@ -333,6 +333,13 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       route = twoOpt(nearestNeighborFrom(originNode, selectedHouses), originNode);
     }
 
+    // Partial-coverage fallback: if no subset fully covers demand (stock shortage),
+    // visit all relevant houses to collect as much as possible and report the deficit.
+    if (selectedHouses.length === 0 && relevantHouses.length > 0) {
+      selectedHouses = relevantHouses;
+      route = twoOpt(nearestNeighborFrom(originNode, selectedHouses), originNode);
+    }
+
     // Allocate materials within the selected set (closest house first per material)
     const contributions = {};
     const deficit = {};
