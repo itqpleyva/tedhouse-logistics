@@ -614,93 +614,61 @@ async function tgSend(chatId, text) {
   } catch (e) { console.error('tgSend error:', e.message); }
 }
 
-// Parse a channel post and return the optimal route as a text message.
+// Parse a channel post using free-form scanning — no fixed format required.
+// Scans the full text for any house name and any material/quantity pairs
+// regardless of word order or language.
 async function handleChannelRoute(chatId, text) {
-  // Strip /route prefix (or accept plain "route …")
-  const body = text.replace(/^\/?route\s*/i, '').trim();
-  if (!body) {
-    return tgSend(chatId,
-      '⚠️ Usage:\n<code>/route &lt;destination&gt; &lt;material&gt; &lt;qty&gt; [origin:lat,lng]</code>\n\n' +
-      'Example:\n<code>/route Добрич lumber 1000</code>\n<code>/route Shumen lumber 500 origin:42.69,23.32</code>'
-    );
-  }
+  const [houses]    = await pool.query('SELECT id, name, location FROM house ORDER BY id');
+  const [materials] = await pool.query('SELECT id, name, unit FROM material ORDER BY id');
 
   // Extract optional "origin:lat,lng" anywhere in the message
   let originLat = DEFAULT_ORIGIN_LAT;
   let originLng = DEFAULT_ORIGIN_LNG;
   let originName = DEFAULT_ORIGIN_NAME;
-  const originMatch = body.match(/origin:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i);
+  const originMatch = text.match(/origin:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i);
   if (originMatch) {
     originLat  = parseFloat(originMatch[1]);
     originLng  = parseFloat(originMatch[2]);
     originName = `${originLat.toFixed(4)}, ${originLng.toFixed(4)}`;
   }
-  const cleanBody = body.replace(/origin:\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/i, '').trim();
+  const cleanText = text.replace(/origin:\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/i, '');
+  const lowerText = cleanText.toLowerCase();
 
-  const tokens = cleanBody.split(/\s+/);
-
-  // Load houses and materials
-  const [houses]    = await pool.query('SELECT id, name, location FROM house ORDER BY id');
-  const [materials] = await pool.query('SELECT id, name, unit FROM material ORDER BY id');
-
-  // Match destination — try longest token prefix first
-  let destHouse  = null;
-  let startToken = 0;
-  for (let len = Math.min(tokens.length, 4); len >= 1; len--) {
-    const candidate = tokens.slice(0, len).join(' ').toLowerCase();
-    // Only match if the house name contains the candidate — not the reverse,
-    // which would greedily swallow material/qty tokens into the destination.
-    const match = houses.find(h => h.name.toLowerCase().includes(candidate));
-    if (match) { destHouse = match; startToken = len; break; }
+  // ── Find destination house ──────────────────────────────────────────────────
+  // Pick the house whose name appears in the text; prefer longest name match.
+  let destHouse = null;
+  for (const h of [...houses].sort((a, b) => b.name.length - a.name.length)) {
+    if (lowerText.includes(h.name.toLowerCase())) { destHouse = h; break; }
   }
-  if (!destHouse) {
-    const list = houses.map(h => `• ${h.name}`).join('\n');
-    return tgSend(chatId,
-      `⚠️ Destination not recognised. Available houses:\n${list}\n\n` +
-      `Example: <code>/route Добрич lumber 1000</code>`
-    );
-  }
+  // Silently ignore messages that don't mention any known house
+  if (!destHouse) return;
 
-  // Parse <material> <qty> pairs from the remaining tokens
-  const remaining = tokens.slice(startToken);
-  const orderMaterials = {};   // matId → qty
-  let i = 0;
-  while (i < remaining.length) {
-    const tok = remaining[i];
-    if (!isNaN(tok)) { i++; continue; }   // orphaned number, skip
-    let matMatch = null, consumed = 1;
-    // Try two-word match first (only if the next token is not a number)
-    if (i + 1 < remaining.length && isNaN(remaining[i + 1])) {
-      const two = (tok + ' ' + remaining[i + 1]).toLowerCase();
-      matMatch = materials.find(m =>
-        m.name.toLowerCase().includes(two) || two.includes(m.name.toLowerCase())
-      );
-      if (matMatch) consumed = 2;
+  // ── Find material / quantity pairs ─────────────────────────────────────────
+  // For each material, check if its name appears in the text, then look for
+  // a number within a ±30-character window around the material mention.
+  const orderMaterials = {};
+  for (const mat of [...materials].sort((a, b) => b.name.length - a.name.length)) {
+    const matLower = mat.name.toLowerCase();
+    const idx = lowerText.indexOf(matLower);
+    if (idx === -1) continue;
+
+    const windowBefore = lowerText.substring(Math.max(0, idx - 30), idx);
+    const windowAfter  = lowerText.substring(idx + matLower.length, idx + matLower.length + 30);
+
+    // Number after material name: "lumber 1000", "lumber: 1000", "lumber de 1000"
+    const afterMatch  = windowAfter.match(/^[\s:,de]*(\d+(?:[.,]\d+)?)/i);
+    // Number before material name: "1000 lumber", "1000 de lumber"
+    const beforeMatch = windowBefore.match(/(\d+(?:[.,]\d+)?)[\s\w]{0,10}$/);
+
+    const raw = afterMatch?.[1] ?? beforeMatch?.[1];
+    if (raw) {
+      const qty = parseFloat(raw.replace(',', '.'));
+      if (qty > 0) orderMaterials[mat.id] = (orderMaterials[mat.id] || 0) + qty;
     }
-    // Fall back to one-word
-    if (!matMatch) {
-      const one = tok.toLowerCase();
-      matMatch = materials.find(m =>
-        m.name.toLowerCase().includes(one) || one.includes(m.name.toLowerCase())
-      );
-    }
-    if (matMatch) {
-      const qtyTok = remaining[i + consumed];
-      const qty    = qtyTok ? parseFloat(qtyTok) : NaN;
-      if (!isNaN(qty) && qty > 0) {
-        orderMaterials[matMatch.id] = (orderMaterials[matMatch.id] || 0) + qty;
-        i += consumed + 1;
-      } else { i++; }
-    } else { i++; }
   }
 
-  if (Object.keys(orderMaterials).length === 0) {
-    const matList = materials.map(m => `• ${m.name} (${m.unit})`).join('\n');
-    return tgSend(chatId,
-      `⚠️ No materials recognised. Available:\n${matList}\n\n` +
-      `Example: <code>/route ${destHouse.name} lumber 1000</code>`
-    );
-  }
+  // Silently ignore messages that mention a house but no recognisable materials
+  if (Object.keys(orderMaterials).length === 0) return;
 
   await tgSend(chatId, '⏳ Calculating optimal route…');
 
@@ -891,9 +859,7 @@ async function tgPollLoop() {
         const post = update.channel_post;
         if (!post?.text) continue;
         const txt = post.text.trim();
-        if (/^\/?route\b/i.test(txt)) {
-          handleChannelRoute(String(post.chat.id), txt).catch(e => console.error('handleChannelRoute:', e));
-        }
+        handleChannelRoute(String(post.chat.id), txt).catch(e => console.error('handleChannelRoute:', e));
       }
     } catch (e) {
       console.error('tgPollLoop error:', e.message);
