@@ -8,8 +8,8 @@ const bcrypt  = require('bcryptjs');
 // 1. Create a bot via @BotFather on Telegram → copy the token here
 // 2. Add the bot as an Admin to your channel
 // 3. Set the channel username (@mychannel) or numeric chat ID (-100xxxxxxxxxx)
-const TELEGRAM_TOKEN   = process.env.TELEGRAM_TOKEN   || '';   // e.g. '123456:ABC-DEF...'
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';   // e.g. '@tedhouse_routes' or '-1001234567890'
+const TELEGRAM_TOKEN   = process.env.TELEGRAM_TOKEN   || '8990062843:AAHYRpDaILe1KHLtwzUO8JfZZeUzcKbLq-0';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1003959764722';
 
 const app = express();
 app.use(express.json());
