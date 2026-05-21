@@ -451,7 +451,7 @@ app.post('/api/send-telegram', requireAuth, async (req, res) => {
     return res.status(503).json({ error: 'Telegram not configured. Set TELEGRAM_TOKEN and TELEGRAM_CHAT_ID in server.js.' });
   }
 
-  const { origin, destination, route, deficit, destContribution, totalDistance, totalStops, fullyFulfilled, fuelCost, fuelLitres } = req.body;
+  const { origin, destination, route, deficit, destContribution, totalDistance, totalStops, fullyFulfilled, fuelCost, fuelLitres, mapsUrl } = req.body;
 
   // Build the message text (HTML parse mode)
   const lines = [];
@@ -495,6 +495,7 @@ app.post('/api/send-telegram', requireAuth, async (req, res) => {
   if (fuelCost != null) lines.push(`⛽ Fuel estimate: ~<b>€${Number(fuelCost).toFixed(2)}</b> (${Number(fuelLitres).toFixed(1)} L)`);
   lines.push('');
   lines.push(fullyFulfilled ? '✅ <b>Order fully covered</b>' : '⚠️ <b>Order partially covered</b>');
+  if (mapsUrl) lines.push(`\n🗺 <a href="${mapsUrl}">Open route in Google Maps</a>`);
   lines.push('');
   lines.push('<i>Sent from TEDHOUSE Logistics dashboard</i>');
 
