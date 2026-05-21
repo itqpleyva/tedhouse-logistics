@@ -648,9 +648,9 @@ async function handleChannelRoute(chatId, text) {
   let startToken = 0;
   for (let len = Math.min(tokens.length, 4); len >= 1; len--) {
     const candidate = tokens.slice(0, len).join(' ').toLowerCase();
-    const match = houses.find(h =>
-      h.name.toLowerCase().includes(candidate) || candidate.includes(h.name.toLowerCase())
-    );
+    // Only match if the house name contains the candidate — not the reverse,
+    // which would greedily swallow material/qty tokens into the destination.
+    const match = houses.find(h => h.name.toLowerCase().includes(candidate));
     if (match) { destHouse = match; startToken = len; break; }
   }
   if (!destHouse) {
