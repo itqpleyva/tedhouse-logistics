@@ -708,6 +708,7 @@
       orderOk:'✅ Order fully covered by existing surpluses',
       orderWarn:'⚠️ Insufficient surpluses — missing {deficit}',
       stops:'stops', estimated:'estimated', openMaps:'↗ Open in Google Maps',
+      sendTelegram:'📨 Send to Telegram', telegramSent:'✓ Sent!', telegramErr:'Failed to send',
       startingPointLabel:'Starting point', noMaterials:'No materials to contribute',
       pickupRoute:'Pickup route', noHouses:'No houses with available materials.',
       // modals
@@ -770,6 +771,7 @@
       orderOk:'✅ Поръчката е напълно покрита от наличните излишъци',
       orderWarn:'⚠️ Недостатъчни излишъци — липсва {deficit}',
       stops:'спирки', estimated:'прибл.', openMaps:'↗ Отвори в Google Maps',
+      sendTelegram:'📨 Изпрати в Telegram', telegramSent:'✓ Изпратено!', telegramErr:'Грешка при изпращане',
       startingPointLabel:'Начална точка', noMaterials:'Няма материали за принос',
       pickupRoute:'Маршрут за събиране', noHouses:'Няма къщи с налични материали.',
       // modals
@@ -1276,6 +1278,9 @@
         ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" class="btn btn-green" style="text-decoration:none;border-radius:8px;padding:0.5rem 0.9rem;font-size:0.8rem">
           ${t('openMaps')}
         </a>` : ''}
+        <button id="tgBtn" class="btn btn-ghost" style="font-size:0.8rem;padding:0.5rem 0.9rem" onclick="sendToTelegram()">
+          ${t('sendTelegram')}
+        </button>
       </div>`;
 
     const originCard = `
@@ -1348,6 +1353,44 @@
 
     document.getElementById('results').innerHTML =
       statusHtml + metaHtml + stopsHtml;
+    _lastRouteData = data;
+    _lastFuelData  = { fuelCost, fuelLitres };
+  }
+
+  let _lastRouteData = null;
+  let _lastFuelData  = null;
+
+  async function sendToTelegram() {
+    const btn = document.getElementById('tgBtn');
+    if (!btn || !_lastRouteData) return;
+    btn.disabled = true;
+    btn.textContent = '📨 …';
+    try {
+      const res = await fetch('/api/send-telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ..._lastRouteData, ..._lastFuelData }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      btn.textContent = t('telegramSent');
+      btn.style.color = 'var(--green)';
+      btn.style.borderColor = 'var(--green)';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = t('sendTelegram');
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 3000);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = t('telegramErr') + ': ' + e.message;
+      btn.style.color = 'var(--red)';
+      setTimeout(() => {
+        btn.textContent = t('sendTelegram');
+        btn.style.color = '';
+      }, 4000);
+    }
   }
 
   // ── SEARCH / AUTOCOMPLETE ────────────────────────────────────────────────────

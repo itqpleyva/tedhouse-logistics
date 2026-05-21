@@ -4,6 +4,13 @@ const path    = require('path');
 const session = require('express-session');
 const bcrypt  = require('bcryptjs');
 
+// ── TELEGRAM CONFIG ──────────────────────────────────────────────────────────
+// 1. Create a bot via @BotFather on Telegram → copy the token here
+// 2. Add the bot as an Admin to your channel
+// 3. Set the channel username (@mychannel) or numeric chat ID (-100xxxxxxxxxx)
+const TELEGRAM_TOKEN   = process.env.TELEGRAM_TOKEN   || '';   // e.g. '123456:ABC-DEF...'
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';   // e.g. '@tedhouse_routes' or '-1001234567890'
+
 const app = express();
 app.use(express.json());
 
@@ -436,6 +443,76 @@ app.post('/api/calculate-order', requireAuth, async (req, res) => {
       totalDistance:  routeDistance(allWaypoints),
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /api/send-telegram ──────────────────────────────────────────────────
+app.post('/api/send-telegram', requireAuth, async (req, res) => {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) {
+    return res.status(503).json({ error: 'Telegram not configured. Set TELEGRAM_TOKEN and TELEGRAM_CHAT_ID in server.js.' });
+  }
+
+  const { origin, destination, route, deficit, destContribution, totalDistance, totalStops, fullyFulfilled, fuelCost, fuelLitres } = req.body;
+
+  // Build the message text (HTML parse mode)
+  const lines = [];
+  lines.push('🚛 <b>TEDHOUSE LOGISTICS — Route Proposal</b>');
+  lines.push('');
+  lines.push(`📍 <b>Origin:</b> ${origin.name}`);
+  lines.push(`🏁 <b>Destination:</b> ${destination.name}`);
+  lines.push('');
+
+  if (route && route.length > 0) {
+    lines.push(`<b>Pickup stops:</b>`);
+    route.forEach((stop, i) => {
+      lines.push(`${i + 1}. <b>${stop.name}</b> — ${stop.location}`);
+      if (stop.contribution) {
+        Object.values(stop.contribution).forEach(c => {
+          lines.push(`   • ${c.name}: ${c.quantity} ${c.unit}`);
+        });
+      }
+    });
+    lines.push('');
+  } else {
+    lines.push('ℹ️ No pickup stops needed.');
+    lines.push('');
+  }
+
+  if (destContribution) {
+    lines.push('<b>Already at destination:</b>');
+    Object.values(destContribution).forEach(c => {
+      lines.push(`   ✅ ${c.name}: ${c.quantity} ${c.unit}`);
+    });
+    lines.push('');
+  }
+
+  if (deficit && deficit.length > 0) {
+    lines.push('⚠️ <b>Insufficient stock — deficit:</b>');
+    deficit.forEach(d => lines.push(`   • ${d.name}: ${d.quantity} ${d.unit} missing`));
+    lines.push('');
+  }
+
+  lines.push(`📏 Total distance: ~<b>${totalDistance} km</b>`);
+  if (fuelCost != null) lines.push(`⛽ Fuel estimate: ~<b>€${Number(fuelCost).toFixed(2)}</b> (${Number(fuelLitres).toFixed(1)} L)`);
+  lines.push('');
+  lines.push(fullyFulfilled ? '✅ <b>Order fully covered</b>' : '⚠️ <b>Order partially covered</b>');
+  lines.push('');
+  lines.push('<i>Sent from TEDHOUSE Logistics dashboard</i>');
+
+  const text = lines.join('\n');
+
+  try {
+    const apiUrl = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML' }),
+    });
+    const result = await response.json();
+    if (!result.ok) return res.status(400).json({ error: result.description || 'Telegram API error' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
