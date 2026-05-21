@@ -597,5 +597,313 @@ function routeDistance(stops) {
   return Math.round(total);
 }
 
+// ── TELEGRAM BOT — channel order listener ───────────────────────────────────
+// Default depot coordinates used when no "origin:lat,lng" is in the message.
+// Change these to your main warehouse / starting point.
+const DEFAULT_ORIGIN_LAT = 42.6977;   // Sofia centre
+const DEFAULT_ORIGIN_LNG = 23.3219;
+const DEFAULT_ORIGIN_NAME = 'Default depot (Sofia)';
+
+async function tgSend(chatId, text) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+    });
+  } catch (e) { console.error('tgSend error:', e.message); }
+}
+
+// Parse a channel post and return the optimal route as a text message.
+async function handleChannelRoute(chatId, text) {
+  // Strip /route prefix (or accept plain "route …")
+  const body = text.replace(/^\/?route\s*/i, '').trim();
+  if (!body) {
+    return tgSend(chatId,
+      '⚠️ Usage:\n<code>/route &lt;destination&gt; &lt;material&gt; &lt;qty&gt; [origin:lat,lng]</code>\n\n' +
+      'Example:\n<code>/route Добрич lumber 1000</code>\n<code>/route Shumen lumber 500 origin:42.69,23.32</code>'
+    );
+  }
+
+  // Extract optional "origin:lat,lng" anywhere in the message
+  let originLat = DEFAULT_ORIGIN_LAT;
+  let originLng = DEFAULT_ORIGIN_LNG;
+  let originName = DEFAULT_ORIGIN_NAME;
+  const originMatch = body.match(/origin:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i);
+  if (originMatch) {
+    originLat  = parseFloat(originMatch[1]);
+    originLng  = parseFloat(originMatch[2]);
+    originName = `${originLat.toFixed(4)}, ${originLng.toFixed(4)}`;
+  }
+  const cleanBody = body.replace(/origin:\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/i, '').trim();
+
+  const tokens = cleanBody.split(/\s+/);
+
+  // Load houses and materials
+  const [houses]    = await pool.query('SELECT id, name, location FROM house ORDER BY id');
+  const [materials] = await pool.query('SELECT id, name, unit FROM material ORDER BY id');
+
+  // Match destination — try longest token prefix first
+  let destHouse  = null;
+  let startToken = 0;
+  for (let len = Math.min(tokens.length, 4); len >= 1; len--) {
+    const candidate = tokens.slice(0, len).join(' ').toLowerCase();
+    const match = houses.find(h =>
+      h.name.toLowerCase().includes(candidate) || candidate.includes(h.name.toLowerCase())
+    );
+    if (match) { destHouse = match; startToken = len; break; }
+  }
+  if (!destHouse) {
+    const list = houses.map(h => `• ${h.name}`).join('\n');
+    return tgSend(chatId,
+      `⚠️ Destination not recognised. Available houses:\n${list}\n\n` +
+      `Example: <code>/route Добрич lumber 1000</code>`
+    );
+  }
+
+  // Parse <material> <qty> pairs from the remaining tokens
+  const remaining = tokens.slice(startToken);
+  const orderMaterials = {};   // matId → qty
+  let i = 0;
+  while (i < remaining.length) {
+    const tok = remaining[i];
+    if (!isNaN(tok)) { i++; continue; }   // orphaned number, skip
+    let matMatch = null, consumed = 1;
+    // Try two-word match first
+    if (i + 1 < remaining.length) {
+      const two = (tok + ' ' + remaining[i + 1]).toLowerCase();
+      matMatch = materials.find(m =>
+        m.name.toLowerCase().includes(two) || two.includes(m.name.toLowerCase())
+      );
+      if (matMatch) consumed = 2;
+    }
+    // Fall back to one-word
+    if (!matMatch) {
+      const one = tok.toLowerCase();
+      matMatch = materials.find(m =>
+        m.name.toLowerCase().includes(one) || one.includes(m.name.toLowerCase())
+      );
+    }
+    if (matMatch) {
+      const qtyTok = remaining[i + consumed];
+      const qty    = qtyTok ? parseFloat(qtyTok) : NaN;
+      if (!isNaN(qty) && qty > 0) {
+        orderMaterials[matMatch.id] = (orderMaterials[matMatch.id] || 0) + qty;
+        i += consumed + 1;
+      } else { i++; }
+    } else { i++; }
+  }
+
+  if (Object.keys(orderMaterials).length === 0) {
+    const matList = materials.map(m => `• ${m.name} (${m.unit})`).join('\n');
+    return tgSend(chatId,
+      `⚠️ No materials recognised. Available:\n${matList}\n\n` +
+      `Example: <code>/route ${destHouse.name} lumber 1000</code>`
+    );
+  }
+
+  await tgSend(chatId, '⏳ Calculating optimal route…');
+
+  try {
+    const originNode = { id: 'gps', name: originName, lat: originLat, lng: originLng };
+
+    const [[destRow]] = await pool.query('SELECT * FROM house WHERE id = ?', [destHouse.id]);
+    const destNode = {
+      id: destRow.id, name: destRow.name, location: destRow.location,
+      lat: parseFloat(destRow.lat), lng: parseFloat(destRow.lng),
+    };
+
+    const [rows] = await pool.query(`
+      SELECT h.id, h.name, h.location, h.lat, h.lng,
+             m.id AS mat_id, m.name AS mat_name, m.unit, i.quantity
+      FROM house h
+      JOIN warehouse w ON w.house_id    = h.id
+      JOIN inventory i ON i.warehouse_id = w.id
+      JOIN material  m ON m.id           = i.material_id
+      WHERE i.quantity > 0 AND h.lat IS NOT NULL AND h.id != ?
+      ORDER BY h.id, m.id
+    `, [destHouse.id]);
+
+    const housesMap = {};
+    for (const row of rows) {
+      if (!housesMap[row.id]) {
+        housesMap[row.id] = {
+          id: row.id, name: row.name, location: row.location,
+          lat: parseFloat(row.lat), lng: parseFloat(row.lng), inventory: {},
+        };
+      }
+      housesMap[row.id].inventory[row.mat_id] = {
+        name: row.mat_name, unit: row.unit, quantity: parseFloat(row.quantity),
+      };
+    }
+    const allHouses = Object.values(housesMap);
+    const [matRows] = await pool.query('SELECT * FROM material ORDER BY id');
+
+    const needed = {};
+    for (const [matId, qty] of Object.entries(orderMaterials)) {
+      if (qty > 0) needed[parseInt(matId)] = qty;
+    }
+
+    // Subtract what the destination already holds
+    const [destInvRows] = await pool.query(`
+      SELECT i.material_id, i.quantity
+      FROM warehouse w JOIN inventory i ON i.warehouse_id = w.id
+      WHERE w.house_id = ?
+    `, [destHouse.id]);
+    const destAlreadyHas = {};
+    for (const r of destInvRows) destAlreadyHas[r.material_id] = parseFloat(r.quantity);
+    const destContrib = {};
+    for (const mid of Object.keys(needed)) {
+      const alreadyHere = destAlreadyHas[parseInt(mid)] || 0;
+      if (alreadyHere > 0) {
+        const mat = matRows.find(m => m.id === parseInt(mid));
+        destContrib[mid] = { name: mat.name, unit: mat.unit, qty: Math.min(alreadyHere, needed[parseInt(mid)]) };
+      }
+      needed[parseInt(mid)] = Math.max(0, needed[parseInt(mid)] - alreadyHere);
+      if (needed[parseInt(mid)] === 0) delete needed[parseInt(mid)];
+    }
+
+    if (Object.keys(needed).length === 0) {
+      return tgSend(chatId,
+        `✅ <b>No pickups needed!</b>\n🏠 <b>${destNode.name}</b> already has everything in stock.\n` +
+        `📏 Direct distance: ${Math.round(haversine(originLat, originLng, destNode.lat, destNode.lng))} km`
+      );
+    }
+
+    const distOf = h => Math.max(haversine(originLat, originLng, h.lat, h.lng), 0.1);
+    const relevantHouses = allHouses.filter(h =>
+      Object.keys(needed).some(mid => (h.inventory[parseInt(mid)]?.quantity || 0) > 0)
+    );
+    function coversDemand(subset) {
+      for (const [mid, qty] of Object.entries(needed)) {
+        const have = subset.reduce((s, h) => s + (h.inventory[parseInt(mid)]?.quantity || 0), 0);
+        if (have < qty) return false;
+      }
+      return true;
+    }
+
+    let selectedHouses = [], route = [];
+    const N = relevantHouses.length;
+    if (N > 0 && N <= 15) {
+      let bestDist = Infinity;
+      for (let mask = 1; mask < (1 << N); mask++) {
+        const subset = [];
+        for (let b = 0; b < N; b++) { if (mask & (1 << b)) subset.push(relevantHouses[b]); }
+        if (!coversDemand(subset)) continue;
+        const ord  = twoOpt(nearestNeighborFrom(originNode, subset), originNode);
+        const dist = routeDistance([originNode, ...ord, destNode]);
+        if (dist < bestDist) { bestDist = dist; selectedHouses = subset; route = ord; }
+      }
+    } else if (N > 15) {
+      const picked = new Set();
+      for (const [matId, qty] of Object.entries(needed)) {
+        let rem = qty; const mid = parseInt(matId);
+        const sorted = allHouses.filter(h => h.inventory[mid]?.quantity > 0)
+          .sort((a, b) => (b.inventory[mid].quantity / distOf(b)) - (a.inventory[mid].quantity / distOf(a)));
+        for (const h of sorted) { if (rem <= 0) break; picked.add(h.id); rem -= h.inventory[mid].quantity; }
+      }
+      selectedHouses = allHouses.filter(h => picked.has(h.id));
+      route = twoOpt(nearestNeighborFrom(originNode, selectedHouses), originNode);
+    }
+    if (selectedHouses.length === 0 && relevantHouses.length > 0) {
+      selectedHouses = relevantHouses;
+      route = twoOpt(nearestNeighborFrom(originNode, selectedHouses), originNode);
+    }
+
+    // Allocate materials to stops
+    const contributions = {};
+    for (const h of route) contributions[h.id] = [];
+    const remaining2 = { ...needed };
+    for (const mid of Object.keys(remaining2)) {
+      const providers = [...route]
+        .filter(h => h.inventory[parseInt(mid)]?.quantity > 0)
+        .sort((a, b) => distOf(a) - distOf(b));
+      for (const h of providers) {
+        if (remaining2[parseInt(mid)] <= 0) break;
+        const take = Math.min(h.inventory[parseInt(mid)].quantity, remaining2[parseInt(mid)]);
+        contributions[h.id].push({ name: h.inventory[parseInt(mid)].name, unit: h.inventory[parseInt(mid)].unit, take });
+        remaining2[parseInt(mid)] -= take;
+      }
+    }
+    const deficit = Object.entries(remaining2)
+      .filter(([, v]) => v > 0)
+      .map(([mid, qty]) => { const mat = matRows.find(m => m.id === parseInt(mid)); return `${mat?.name || mid}: ${qty} ${mat?.unit || ''}`; });
+
+    // Build Google Maps link
+    const waypoints = [originNode, ...route, destNode];
+    const mapsUrl = `https://www.google.com/maps/dir/${waypoints.map(p => `${p.lat},${p.lng}`).join('/')}`;
+    const totalDist = routeDistance(waypoints);
+
+    // Format reply
+    const lines = [];
+    lines.push(`🚛 <b>Route → ${destNode.name}</b>`);
+    lines.push(`📍 Origin: ${originName}`);
+    lines.push(`📏 Total distance: <b>${totalDist} km</b>`);
+    lines.push('');
+
+    if (Object.keys(destContrib).length > 0) {
+      lines.push('✅ <b>Already at destination:</b>');
+      for (const c of Object.values(destContrib)) lines.push(`  • ${c.name}: ${c.qty} ${c.unit}`);
+      lines.push('');
+    }
+
+    if (route.length > 0) {
+      lines.push(`<b>Pickup stops (${route.length}):</b>`);
+      for (let idx = 0; idx < route.length; idx++) {
+        const h = route[idx];
+        lines.push(`${idx + 1}. 🏗 <b>${h.name}</b> — ${h.location}`);
+        for (const a of contributions[h.id]) lines.push(`   📦 ${a.name}: ${a.take} ${a.unit}`);
+      }
+    } else {
+      lines.push('ℹ️ No pickup stops needed.');
+    }
+
+    if (deficit.length > 0) {
+      lines.push('');
+      lines.push('⚠️ <b>Stock shortage:</b>');
+      for (const d of deficit) lines.push(`  • ${d}`);
+    }
+
+    lines.push('');
+    lines.push(deficit.length === 0 ? '✅ Order fully covered' : '⚠️ Order partially covered');
+    lines.push(`🗺 <a href="${mapsUrl}">Open in Google Maps</a>`);
+
+    await tgSend(chatId, lines.join('\n'));
+  } catch (e) {
+    console.error('Bot route error:', e);
+    await tgSend(chatId, `❌ Error: ${e.message}`);
+  }
+}
+
+// Long-poll for channel_post updates
+let tgPollOffset = 0;
+async function tgPollLoop() {
+  console.log('Telegram bot polling started…');
+  while (true) {
+    try {
+      const res  = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates?offset=${tgPollOffset}&timeout=25&allowed_updates=["channel_post"]`
+      );
+      if (!res.ok) { await new Promise(r => setTimeout(r, 5000)); continue; }
+      const data = await res.json();
+      for (const update of (data.result || [])) {
+        tgPollOffset = update.update_id + 1;
+        const post = update.channel_post;
+        if (!post?.text) continue;
+        const txt = post.text.trim();
+        if (/^\/?route\b/i.test(txt)) {
+          handleChannelRoute(String(post.chat.id), txt).catch(e => console.error('handleChannelRoute:', e));
+        }
+      }
+    } catch (e) {
+      console.error('tgPollLoop error:', e.message);
+      await new Promise(r => setTimeout(r, 5000));
+    }
+  }
+}
+
 const PORT = 3000;
-app.listen(PORT, () => console.log(`Teodor Dashboard → http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Teodor Dashboard → http://localhost:${PORT}`);
+  tgPollLoop();
+});
