@@ -669,8 +669,8 @@ async function handleChannelRoute(chatId, text) {
     const tok = remaining[i];
     if (!isNaN(tok)) { i++; continue; }   // orphaned number, skip
     let matMatch = null, consumed = 1;
-    // Try two-word match first
-    if (i + 1 < remaining.length) {
+    // Try two-word match first (only if the next token is not a number)
+    if (i + 1 < remaining.length && isNaN(remaining[i + 1])) {
       const two = (tok + ' ' + remaining[i + 1]).toLowerCase();
       matMatch = materials.find(m =>
         m.name.toLowerCase().includes(two) || two.includes(m.name.toLowerCase())
